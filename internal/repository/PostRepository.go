@@ -1,9 +1,11 @@
 package repository
 
 import (
-	"gorm.io/gorm"
+	"errors"
 	"stvCms/internal/config"
 	"stvCms/internal/models"
+
+	"gorm.io/gorm"
 )
 
 type IPostRepository interface {
@@ -14,6 +16,8 @@ type IPostRepository interface {
 	DeletePostById(id int) bool
 	SaveCodeContentInPost(codeContent models.CodeContent) error
 	GetCodeContents(postID uint) ([]models.CodeContent, error)
+	SavePostImage(postID int, publicUrl string) error
+	GetPostImage(postID uint) (string, error)
 }
 
 type postRepository struct {
@@ -82,4 +86,14 @@ func (pr *postRepository) GetCodeContents(postID uint) ([]models.CodeContent, er
 		return codeContents, err
 	}
 	return codeContents, nil
+}
+
+func (pr *postRepository) SavePostImage(postID int, publicUrl string) error {
+	// TODO
+	return errors.New("Not implemented")
+}
+
+func (pr *postRepository) GetPostImage(postID uint) (string, error) {
+	//TODO implement me
+	panic("implement me")
 }

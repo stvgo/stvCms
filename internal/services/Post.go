@@ -3,8 +3,6 @@ package services
 import (
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
 	"io"
 	"mime/multipart"
 	"os"
@@ -14,6 +12,9 @@ import (
 	"stvCms/internal/repository"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/rest/response"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type IPostService interface {
@@ -23,15 +24,16 @@ type IPostService interface {
 	UpdatePost(req request.UpdatePostRequest) (string, error)
 	DeletePostById(id string) (string, error)
 	InsertCodeContentInPost(content request.CodeContent) (string, error)
-	//GetCodeContent() // TODO : terminar
+	GetCodeContentByPostId(postId uint) error
 	SavePostImage(postID string, image *multipart.FileHeader) (string, error)
+	GetPostImage(postID uint) (string, error)
 }
 
 type postService struct {
 	repository repository.IPostRepository
 }
 
-func NewPostService() IPostService {
+func NewPostService() *postService {
 	return &postService{
 		repository: repository.NewPostGormRepository(),
 	}
@@ -176,6 +178,10 @@ func (ps *postService) InsertCodeContentInPost(request request.CodeContent) (str
 	return "Code content asociado correctamente", nil
 }
 
+func (ps *postService) GetCodeContentByPostId(postId uint) error {
+	return nil
+}
+
 func (ps *postService) SavePostImage(postID string, image *multipart.FileHeader) (string, error) {
 	postId, err := strconv.Atoi(postID)
 	if err != nil {
@@ -216,4 +222,17 @@ func (ps *postService) SavePostImage(postID string, image *multipart.FileHeader)
 
 	return publicUrl, nil
 
+}
+
+func (ps *postService) GetPostImage(postID uint) (string, error) {
+	imageUrl, err := ps.repository.GetPostImage(postID)
+	if err != nil {
+		return "", err
+	}
+
+	if imageUrl == "" {
+		return "", errors.New("No se encontró imagen para el post")
+	}
+
+	return imageUrl, nil
 }

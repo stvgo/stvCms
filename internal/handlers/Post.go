@@ -115,3 +115,25 @@ func (h *postHandler) InsertCodeContentInPost(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"response": response})
 }
+
+func (h *postHandler) UpdloadImage(ctx *gin.Context) {
+	postID := ctx.Param("id")
+	if postID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+		return
+	}
+
+	file, err := ctx.FormFile("image")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := h.service.SavePostImage(postID, file)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"response": response})
+}
