@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"net/http"
 	"os"
 	"stvCms/internal/config"
 	"stvCms/internal/handlers"
+
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -39,6 +40,7 @@ func startServer() {
 	postGroup.PUT("/update", postHandler.UpdatePost)
 	postGroup.DELETE("/delete/:id", postHandler.DeletePostById)
 	postGroup.POST("/codeContent", postHandler.InsertCodeContentInPost)
+	postGroup.POST("/:id/image", postHandler.UpdloadImage)
 
 	// login
 	postGroup.POST("/login/oauth2", login.Login)
