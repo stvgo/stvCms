@@ -1,10 +1,12 @@
 package handlers
 
 import (
-	"github.com/gin-gonic/gin"
-	"net/http"
+	"strconv"
 	"stvCms/internal/rest/request"
+	"stvCms/internal/rest/response"
 	"stvCms/internal/services"
+
+	"github.com/go-fuego/fuego"
 )
 
 type postHandler struct {
@@ -17,123 +19,65 @@ func NewPostHandler() *postHandler {
 	}
 }
 
-func (h *postHandler) CreatePost(ctx *gin.Context) {
-	postRequest := request.CreatePostRequest{}
-
-	if err := ctx.ShouldBindJSON(&postRequest); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	response, err := h.service.CreatePost(postRequest)
-
+func (h *postHandler) CreatePost(ctx fuego.ContextWithBody[request.CreatePostRequest]) (string, error) {
+	input, err := ctx.Body()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		return "", err
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"response": response})
+	response, err := h.service.CreatePost(input)
+	if err != nil {
+		return "", err
+	}
 
+	return response, nil
 }
 
-func (h *postHandler) GetPosts(ctx *gin.Context) {
-	response, err := h.service.GetPosts()
-
+func (h *postHandler) GetPosts(ctx fuego.ContextWithBody[response.PostResponse]) (*[]response.PostResponse, error) {
+	_, err := ctx.Body()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
+		return nil, err
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"response": response})
+	responsePosts, err := h.service.GetPosts()
+	if err != nil {
+		return nil, err
+	}
+
+	return &responsePosts, nil
 }
 
-func (h *postHandler) UpdatePost(ctx *gin.Context) {
-	req := request.UpdatePostRequest{}
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+func (h *postHandler) UpdatePost(ctx fuego.ContextWithBody[request.UpdatePostRequest]) (string, error) {
+	req, err := ctx.Body()
 
 	response, err := h.service.UpdatePost(req)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
+		return "", err
 	}
-	ctx.JSON(http.StatusOK, gin.H{"response": response})
 
+	return response, nil
 }
 
-func (h *postHandler) DeletePostById(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (h *postHandler) DeletePostById(ctx fuego.ContextNoBody) (any, string) {
+	id := ctx.PathParam("id")
 
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
-		return
-	}
-
-	response, err := h.service.DeletePostById(id)
-
+	_, err := h.service.DeletePostById(id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
+		return nil, err.Error()
 	}
-
-	ctx.JSON(http.StatusOK, gin.H{"response": response})
+	return nil, "Deleted"
 }
 
-func (h *postHandler) GetPostById(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (h *postHandler) GetPostById(ctx fuego.ContextWithBody[response.PostResponse]) (*response.PostResponse, error) {
+	id := ctx.PathParam("id")
 
-	if id == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
-		return
-	}
-
-	response, err := h.service.GetPostById(id)
+	postId, _ := strconv.Atoi(id)
+	responsePost, err := h.service.GetPostById(postId)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
+		return nil, err
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"data": response})
-}
-
-func (h *postHandler) InsertCodeContentInPost(ctx *gin.Context) {
-	var req request.CodeContent
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	response, err := h.service.InsertCodeContentInPost(req)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{"response": response})
-}
-
-func (h *postHandler) UpdloadImage(ctx *gin.Context) {
-	postID := ctx.Param("id")
-	if postID == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
-		return
-	}
-
-	file, err := ctx.FormFile("image")
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	response, err := h.service.SavePostImage(postID, file)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{"response": response})
+	return &responsePost, nil
 }

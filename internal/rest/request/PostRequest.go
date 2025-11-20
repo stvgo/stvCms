@@ -1,25 +1,20 @@
 package request
 
 type CreatePostRequest struct {
-	Title   string `json:"title" required:"true"`
-	Content string `json:"content" required:"true"`
-	Author  string `json:"author" required:"true"`
-	//Images  []byte `json:"images"`
+	Title         string         `json:"title" binding:"required"`
+	UserID        string         `json:"user_id" binding:"required"`
+	ContentBlocks []ContentBlock `json:"content_blocks"`
 }
 
-type CodeContent struct {
-	PostID  int     `json:"post_id" required:"true"`
-	Content Content `json:"content" required:"true"`
-}
-
-type Content struct {
-	Code     string `json:"code"`
-	Language string `json:"language"`
+type ContentBlock struct {
+	Type     string `json:"type" binding:"required"` // images, code, text, urls
+	Order    int    `json:"order" binding:"required"`
+	Content  string `json:"content" binding:"required"`
+	Language string `json:"language,omitempty"`
 }
 
 type UpdatePostRequest struct {
-	Id      uint   `json:"id"`
-	Title   string `json:"title"`
-	Content string `json:"content"`
-	Author  string `json:"author"`
+	Id            uint           `json:"id" binding:"required"`
+	Title         string         `json:"title"`
+	ContentBlocks []ContentBlock `json:"content_blocks"`
 }

@@ -6,7 +6,8 @@ import (
 	"stvCms/internal/config"
 	"stvCms/internal/handlers"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-fuego/fuego"
+	"github.com/go-fuego/fuego/option"
 	"github.com/joho/godotenv"
 )
 
@@ -24,34 +25,30 @@ func loadEnv() {
 }
 
 func startServer() {
-	router := gin.Default()
-	router.GET("/ping", func(context *gin.Context) {
-		context.JSON(http.StatusOK, gin.H{"response": "pong!"})
-	})
+	s := fuego.NewServer()
 	// post group
 
 	postHandler := handlers.NewPostHandler()
-	login := handlers.NewLoginAndRegisterHandler()
+	//login := handlers.NewLoginAndRegisterHandler()
 
-	postGroup := router.Group("/post")
-	postGroup.POST("/create", postHandler.CreatePost)
-	postGroup.GET("/getAll", postHandler.GetPosts)
-	postGroup.GET("/getPost/:id", postHandler.GetPostById)
-	postGroup.PUT("/update", postHandler.UpdatePost)
-	postGroup.DELETE("/delete/:id", postHandler.DeletePostById)
-	postGroup.POST("/codeContent", postHandler.InsertCodeContentInPost)
-	postGroup.POST("/:id/image", postHandler.UpdloadImage)
-
-	// login
-	postGroup.POST("/login/oauth2", login.Login)
+	postGroup := fuego.Group(s, "/post")
+	fuego.Post(postGroup, "/create", postHandler.CreatePost, option.DefaultStatusCode(http.StatusCreated))
+	fuego.Get(postGroup, "/getAll", postHandler.GetPosts)
+	fuego.Get(postGroup, "/getPost/{id}", postHandler.GetPostById)
+	fuego.Put(postGroup, "/update", postHandler.UpdatePost)
+	//fuego.Delete(postGroup, "/delete/{id}", postHandler.DeletePostById, option.DefaultStatusCode(http.StatusNoContent))
+	//
+	//// login
+	//postGroup.POST("/login/oauth2", login.Login)
 
 	// users group
 	//userGroup := router.Group("/user")
 	//userGroup.GET("")
 
-	err := router.Run(":" + os.Getenv("GIN_PORT"))
+	s.Addr = "localhost:" + os.Getenv("SERVER_PORT")
+	err := s.Run()
 	if err != nil {
-		return
+		panic(err)
 	}
 }
 

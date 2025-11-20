@@ -1,32 +1,22 @@
 package services
 
 import (
-	"errors"
 	"fmt"
-	"io"
-	"mime/multipart"
-	"os"
-	"path/filepath"
 	"strconv"
 	"stvCms/internal/models"
 	"stvCms/internal/repository"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/rest/response"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type IPostService interface {
 	CreatePost(req request.CreatePostRequest) (string, error)
 	GetPosts() ([]response.PostResponse, error)
-	GetPostById(id string) (response.PostResponse, error)
+	GetPostById(id int) (response.PostResponse, error)
 	UpdatePost(req request.UpdatePostRequest) (string, error)
 	DeletePostById(id string) (string, error)
-	InsertCodeContentInPost(content request.CodeContent) (string, error)
-	GetCodeContentByPostId(postId uint) error
-	SavePostImage(postID string, image *multipart.FileHeader) (string, error)
-	GetPostImage(postID uint) (string, error)
 }
 
 type postService struct {
@@ -40,7 +30,21 @@ func NewPostService() *postService {
 }
 
 func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error) {
-	post := reqToModel(req)
+	post := models.Post{
+		Title:  req.Title,
+		UserID: req.UserID,
+	}
+
+	for _, block := range req.ContentBlocks {
+
+		contentBlock := models.ContentBlock{
+			Type:     block.Type,
+			Order:    block.Order,
+			Content:  block.Content,
+			Language: block.Language,
+		}
+		post.ContentBlocks = append(post.ContentBlocks, contentBlock)
+	}
 
 	modelPost, err := ps.repository.CreatePost(post)
 	if err != nil {
@@ -51,7 +55,6 @@ func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error)
 }
 
 func (ps *postService) GetPosts() ([]response.PostResponse, error) {
-
 	posts := []response.PostResponse{}
 	modelPosts, err := ps.repository.GetPosts()
 	if err != nil {
@@ -59,14 +62,24 @@ func (ps *postService) GetPosts() ([]response.PostResponse, error) {
 	}
 
 	for _, post := range modelPosts {
+		var contentBlocks []response.ContentBlockResponse
+		for _, block := range post.ContentBlocks {
+			contentBlocks = append(contentBlocks, response.ContentBlockResponse{
+				Id:       block.ID,
+				Type:     block.Type,
+				Order:    block.Order,
+				Content:  block.Content,
+				Language: block.Language,
+			})
+		}
+
 		data := response.PostResponse{
-			Id:          post.Model.ID,
-			CreatedAt:   post.CreatedAt,
-			UpdatedAt:   post.UpdatedAt,
-			Title:       post.Title,
-			Content:     post.Content,
-			Author:      post.Author,
-			CodeContent: ps.GetCodeContent(post.ID),
+			Id:            post.Model.ID,
+			CreatedAt:     post.CreatedAt,
+			UpdatedAt:     post.UpdatedAt,
+			Title:         post.Title,
+			UserID:        post.UserID,
+			ContentBlocks: contentBlocks,
 		}
 		posts = append(posts, data)
 	}
@@ -74,47 +87,31 @@ func (ps *postService) GetPosts() ([]response.PostResponse, error) {
 	return posts, nil
 }
 
-func (ps *postService) GetCodeContent(postID uint) []response.CodeContentResponse {
-	if postID == 0 {
-		return []response.CodeContentResponse{}
-	}
+func (ps *postService) GetPostById(id int) (response.PostResponse, error) {
 
-	codeContents, err := ps.repository.GetCodeContents(postID)
-
+	post, err := ps.repository.GetPostById(uint(id))
 	if err != nil {
-		return []response.CodeContentResponse{}
-	}
-	var codeContentResponses []response.CodeContentResponse
-
-	for _, codeContent := range codeContents {
-		codeContentResponse := response.CodeContentResponse{
-			Code:     codeContent.Code,
-			Language: codeContent.Language,
-		}
-
-		codeContentResponses = append(codeContentResponses, codeContentResponse)
+		return response.PostResponse{}, err
 	}
 
-	return codeContentResponses
-}
-
-func (ps *postService) GetPostById(id string) (response.PostResponse, error) {
-	postId, _ := strconv.Atoi(id)
-
-	post, err := ps.repository.GetPostById(uint(postId))
+	var contentBlocks []response.ContentBlockResponse
+	for _, block := range post.ContentBlocks {
+		contentBlocks = append(contentBlocks, response.ContentBlockResponse{
+			Id:       block.ID,
+			Type:     block.Type,
+			Order:    block.Order,
+			Content:  block.Content,
+			Language: block.Language,
+		})
+	}
 
 	postResponse := response.PostResponse{
-		Id:          post.Model.ID,
-		CreatedAt:   post.CreatedAt,
-		UpdatedAt:   post.UpdatedAt,
-		Title:       post.Title,
-		Content:     post.Content,
-		Author:      post.Author,
-		CodeContent: ps.GetCodeContent(post.Model.ID),
-	}
-
-	if err != nil {
-		return postResponse, err
+		Id:            post.Model.ID,
+		CreatedAt:     post.CreatedAt,
+		UpdatedAt:     post.UpdatedAt,
+		Title:         post.Title,
+		UserID:        post.UserID,
+		ContentBlocks: contentBlocks,
 	}
 
 	return postResponse, nil
@@ -129,10 +126,27 @@ func (ps *postService) UpdatePost(req request.UpdatePostRequest) (string, error)
 		return "Error al buscar el post", err
 	}
 
-	// mapping req to model
-	postModel.Title = req.Title
-	postModel.Content = req.Content
-	postModel.Author = req.Author
+	// Actualizar título si se proporciona
+	if req.Title != "" {
+		postModel.Title = req.Title
+	}
+
+	// Actualizar content blocks si se proporcionan
+	if len(req.ContentBlocks) > 0 {
+		// Limpiar los bloques existentes
+		postModel.ContentBlocks = []models.ContentBlock{}
+
+		// Agregar los nuevos bloques
+		for _, block := range req.ContentBlocks {
+			contentBlock := models.ContentBlock{
+				Type:     block.Type,
+				Order:    block.Order,
+				Content:  block.Content,
+				Language: block.Language,
+			}
+			postModel.ContentBlocks = append(postModel.ContentBlocks, contentBlock)
+		}
+	}
 
 	postUpdated, err := ps.repository.UpdatePost(req.Id, postModel)
 	if err != nil {
@@ -152,87 +166,4 @@ func (ps *postService) DeletePostById(id string) (string, error) {
 	}
 
 	return "Post borrado", nil
-}
-
-func reqToModel(req request.CreatePostRequest) models.Post {
-	return models.Post{
-		Title:   req.Title,
-		Content: req.Content,
-		Author:  req.Author,
-		//Images:  req.Images,
-	}
-}
-
-func (ps *postService) InsertCodeContentInPost(request request.CodeContent) (string, error) {
-
-	model := models.CodeContent{
-		Code:     request.Content.Code,
-		Language: request.Content.Language,
-		PostID:   uint(request.PostID),
-	}
-	err := ps.repository.SaveCodeContentInPost(model)
-	if err != nil {
-		return "", err
-	}
-
-	return "Code content asociado correctamente", nil
-}
-
-func (ps *postService) GetCodeContentByPostId(postId uint) error {
-	return nil
-}
-
-func (ps *postService) SavePostImage(postID string, image *multipart.FileHeader) (string, error) {
-	postId, err := strconv.Atoi(postID)
-	if err != nil {
-		return "", err
-	}
-
-	src, err := image.Open()
-	if err != nil {
-		return "", err
-	}
-	defer src.Close()
-
-	imageExtension := filepath.Ext(image.Filename)
-	uniqueFilename := uuid.NewString() + imageExtension
-
-	uploadDir := "./public/uploads/posts"
-	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-		return "", errors.New("Error al crear el upload dir")
-	}
-
-	destinationPath := filepath.Join(uploadDir, uniqueFilename)
-	dst, err := os.Create(destinationPath)
-	if err != nil {
-		return "", errors.New("Error al crear el upload dir")
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, src); err != nil {
-		return "", errors.New("Error al copiar el archivo")
-	}
-
-	publicUrl := "uploads/posts/" + uniqueFilename
-
-	err = ps.repository.SavePostImage(postId, publicUrl)
-	if err != nil {
-		return "", err
-	}
-
-	return publicUrl, nil
-
-}
-
-func (ps *postService) GetPostImage(postID uint) (string, error) {
-	imageUrl, err := ps.repository.GetPostImage(postID)
-	if err != nil {
-		return "", err
-	}
-
-	if imageUrl == "" {
-		return "", errors.New("No se encontró imagen para el post")
-	}
-
-	return imageUrl, nil
 }

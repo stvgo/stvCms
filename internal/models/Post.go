@@ -4,19 +4,17 @@ import "gorm.io/gorm"
 
 type Post struct {
 	gorm.Model
-	Title   string
-	Content string
-	Author  string
-	//Images  []byte `gorm:"type:bytea"`
-	CodeContent []CodeContent
+	Title         string
+	UserID        string
+	ContentBlocks []ContentBlock
 }
 
-type CodeContent struct {
+type ContentBlock struct {
 	gorm.Model
-	Code     string
-	Language string
-
-	//relaciones
-	PostID uint
-	Post   Post `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	Type     string `gorm:"type:varchar(20)"` // "text", "code", "image", "url"
+	Order    int
+	Content  string `gorm:"type:text"`
+	Language string `gorm:"type:varchar(50)"`
+	PostID   uint
+	Post     Post `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }

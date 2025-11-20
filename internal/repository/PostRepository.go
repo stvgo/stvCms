@@ -14,8 +14,6 @@ type IPostRepository interface {
 	UpdatePost(id uint, post models.Post) (string, error)
 	GetPostById(id uint) (models.Post, error)
 	DeletePostById(id int) bool
-	SaveCodeContentInPost(codeContent models.CodeContent) error
-	GetCodeContents(postID uint) ([]models.CodeContent, error)
 	SavePostImage(postID int, publicUrl string) error
 	GetPostImage(postID uint) (string, error)
 }
@@ -63,29 +61,23 @@ func (pr *postRepository) UpdatePost(id uint, post models.Post) (string, error) 
 func (pr *postRepository) GetPostById(id uint) (models.Post, error) {
 	var post models.Post
 	err := pr.db.First(&post, id).Error
+
+	contentBlocks, err := pr.GetContentBlocksById(id)
+
+	post.ContentBlocks = contentBlocks
+
 	return post, err
+}
+
+func (pr *postRepository) GetContentBlocksById(id uint) ([]models.ContentBlock, error) {
+	var contentBlocks []models.ContentBlock
+	err := pr.db.Where("post_id = ?", id).Find(&contentBlocks).Error
+	return contentBlocks, err
 }
 
 func (pr *postRepository) DeletePostById(id int) bool {
 	ok := pr.db.Delete(&models.Post{}, id).RowsAffected > 0
 	return ok
-}
-
-func (pr *postRepository) SaveCodeContentInPost(codeContent models.CodeContent) error {
-	err := pr.db.Create(&codeContent).Error
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (pr *postRepository) GetCodeContents(postID uint) ([]models.CodeContent, error) {
-	var codeContents []models.CodeContent
-	err := pr.db.Where("post_id = ?", postID).Find(&codeContents).Error
-	if err != nil {
-		return codeContents, err
-	}
-	return codeContents, nil
 }
 
 func (pr *postRepository) SavePostImage(postID int, publicUrl string) error {
