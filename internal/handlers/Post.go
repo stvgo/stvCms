@@ -1,12 +1,12 @@
 package handlers
 
 import (
+	"net/http"
 	"strconv"
 	"stvCms/internal/rest/request"
-	"stvCms/internal/rest/response"
 	"stvCms/internal/services"
 
-	"github.com/go-fuego/fuego"
+	"github.com/labstack/echo/v4"
 )
 
 type postHandler struct {
@@ -19,65 +19,82 @@ func NewPostHandler() *postHandler {
 	}
 }
 
-func (h *postHandler) CreatePost(ctx fuego.ContextWithBody[request.CreatePostRequest]) (string, error) {
-	input, err := ctx.Body()
-	if err != nil {
-		return "", err
+func (h *postHandler) CreatePost(c echo.Context) error {
+	var input request.CreatePostRequest
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	response, err := h.service.CreatePost(input)
+	result, err := h.service.CreatePost(input)
 	if err != nil {
-		return "", err
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	return response, nil
+	return c.JSON(http.StatusCreated, result)
 }
 
-func (h *postHandler) GetPosts(ctx fuego.ContextWithBody[response.PostResponse]) (*[]response.PostResponse, error) {
-	_, err := ctx.Body()
-	if err != nil {
-		return nil, err
-	}
-
+func (h *postHandler) GetPosts(c echo.Context) error {
 	responsePosts, err := h.service.GetPosts()
 	if err != nil {
-		return nil, err
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	return &responsePosts, nil
+	return c.JSON(http.StatusOK, responsePosts)
 }
 
-func (h *postHandler) UpdatePost(ctx fuego.ContextWithBody[request.UpdatePostRequest]) (string, error) {
-	req, err := ctx.Body()
+func (h *postHandler) UpdatePost(c echo.Context) error {
+	var req request.UpdatePostRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
 
-	response, err := h.service.UpdatePost(req)
-
+	result, err := h.service.UpdatePost(req)
 	if err != nil {
-		return "", err
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	return response, nil
+	return c.JSON(http.StatusOK, result)
 }
 
-func (h *postHandler) DeletePostById(ctx fuego.ContextNoBody) (any, string) {
-	id := ctx.PathParam("id")
+func (h *postHandler) DeletePostById(c echo.Context) error {
+	id := c.Param("id")
 
 	_, err := h.service.DeletePostById(id)
 	if err != nil {
-		return nil, err.Error()
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-	return nil, "Deleted"
+
+	return c.JSON(http.StatusNoContent, map[string]string{"message": "Deleted"})
 }
 
-func (h *postHandler) GetPostById(ctx fuego.ContextWithBody[response.PostResponse]) (*response.PostResponse, error) {
-	id := ctx.PathParam("id")
+func (h *postHandler) GetPostById(c echo.Context) error {
+	id := c.Param("id")
 
-	postId, _ := strconv.Atoi(id)
-	responsePost, err := h.service.GetPostById(postId)
-
+	postId, err := strconv.Atoi(id)
 	if err != nil {
-		return nil, err
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid ID"})
 	}
 
-	return &responsePost, nil
+	responsePost, err := h.service.GetPostById(postId)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, responsePost)
+}
+
+func (h *postHandler) UploadPostImage(c echo.Context) error {
+	id := c.Param("id")
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "File not found"})
+	}
+
+	// Here you would handle the file upload logic, e.g., saving the file to a server or cloud storage.
+	_ = file // Placeholder to avoid unused variable error
+	_ = id   // Placeholder to avoid unused variable error
+
+	// TODO: Implement UploadPostImage in the service
+	return c.JSON(http.StatusNotImplemented, map[string]string{"message": "Upload not implemented yet"})
 }

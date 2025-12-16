@@ -1,18 +1,23 @@
 package main
 
 import (
-	"net/http"
+	"log"
 	"os"
 	"stvCms/internal/config"
 	"stvCms/internal/handlers"
 
-	"github.com/go-fuego/fuego"
-	"github.com/go-fuego/fuego/option"
+	"github.com/gorilla/sessions"
 	"github.com/joho/godotenv"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/gothic"
+	"github.com/markbates/goth/providers/google"
 )
 
 func main() {
 	loadEnv()
+	initAuth()
 	startDatabase()
 	startServer()
 }
@@ -24,29 +29,60 @@ func loadEnv() {
 	}
 }
 
-func startServer() {
-	s := fuego.NewServer()
-	// post group
+func initAuth() {
+	clientID := os.Getenv("CLIENT_ID")
+	clientSecret := os.Getenv("CLIENT_SECRET")
+	callbackURL := os.Getenv("CLIENT_CALLBACK_URL")
 
+	if clientID == "" || clientSecret == "" || callbackURL == "" {
+		log.Fatal("Environment variables (CLIENT_ID, CLIENT_SECRET, CLIENT_CALLBACK_URL) are required")
+	}
+
+	goth.UseProviders(
+		google.New(clientID, clientSecret, callbackURL),
+	)
+
+	key := os.Getenv("SESSION_SECRET")
+	if key == "" {
+		key = "default-secret-key-change-this"
+		log.Println("Warning: SESSION_SECRET not set, using default key")
+	}
+	gothic.Store = sessions.NewCookieStore([]byte(key))
+}
+
+func startServer() {
+	e := echo.New()
+
+	// Middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	// Handlers
 	postHandler := handlers.NewPostHandler()
 	//login := handlers.NewLoginAndRegisterHandler()
 
-	postGroup := fuego.Group(s, "/post")
-	fuego.Post(postGroup, "/create", postHandler.CreatePost, option.DefaultStatusCode(http.StatusCreated))
-	fuego.Get(postGroup, "/getAll", postHandler.GetPosts)
-	fuego.Get(postGroup, "/getPost/{id}", postHandler.GetPostById)
-	fuego.Put(postGroup, "/update", postHandler.UpdatePost)
-	//fuego.Delete(postGroup, "/delete/{id}", postHandler.DeletePostById, option.DefaultStatusCode(http.StatusNoContent))
+	// Post routes
+	postGroup := e.Group("/post")
+	postGroup.POST("/create", postHandler.CreatePost)
+	postGroup.GET("/getAll", postHandler.GetPosts)
+	postGroup.GET("/getPost/:id", postHandler.GetPostById)
+	postGroup.PUT("/update", postHandler.UpdatePost)
+	postGroup.POST("/uploadImage/:id", postHandler.UploadPostImage)
+	//postGroup.DELETE("/delete/:id", postHandler.DeletePostById)
 	//
-	//// login
-	//postGroup.POST("/login/oauth2", login.Login)
+	// login
+	authHandler := handlers.NewLoginAndRegisterHandler()
+	authGroup := e.Group("/auth")
+	authGroup.GET("/", authHandler.Home)
+	authGroup.GET("/:provider", authHandler.SignInWithProvider)
+	authGroup.GET("/:provider/callback", authHandler.CallbackHandler)
+	authGroup.GET("/success", authHandler.Success)
 
 	// users group
-	//userGroup := router.Group("/user")
+	//userGroup := e.Group("/user")
 	//userGroup.GET("")
 
-	s.Addr = "localhost:" + os.Getenv("SERVER_PORT")
-	err := s.Run()
+	err := e.Start("localhost:" + os.Getenv("SERVER_PORT"))
 	if err != nil {
 		panic(err)
 	}
