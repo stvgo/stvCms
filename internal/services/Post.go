@@ -2,12 +2,18 @@ package services
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
+	"mime/multipart"
+	"os"
+	"path/filepath"
 	"strconv"
 	"stvCms/internal/models"
 	"stvCms/internal/repository"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/rest/response"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -17,6 +23,7 @@ type IPostService interface {
 	GetPostById(id int) (response.PostResponse, error)
 	UpdatePost(req request.UpdatePostRequest) (string, error)
 	DeletePostById(id string) (string, error)
+	SaveImage(image multipart.File, handler *multipart.FileHeader) (string, error)
 }
 
 type postService struct {
@@ -36,7 +43,6 @@ func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error)
 	}
 
 	for _, block := range req.ContentBlocks {
-
 		contentBlock := models.ContentBlock{
 			Type:     block.Type,
 			Order:    block.Order,
@@ -166,4 +172,37 @@ func (ps *postService) DeletePostById(id string) (string, error) {
 	}
 
 	return "Post borrado", nil
+}
+
+func (ps *postService) SaveImage(image multipart.File, handler *multipart.FileHeader) (string, error) {
+	maxSize := int64(10 << 20) // 10 MB
+	if handler.Size > maxSize {
+		return "", fmt.Errorf("el archivo excede el tamaño máximo permitido de 10MB")
+	}
+
+	ext := filepath.Ext(handler.Filename)
+	fileName := uuid.New().String() + ext
+
+	uploadDir := "././public/uploads"
+	err := os.MkdirAll(uploadDir, os.ModePerm)
+	if err != nil {
+		slog.Error("error al crear directorio", "error", err)
+		return "", fmt.Errorf("error al crear directorio: %w", err)
+	}
+
+	dst, err := os.Create(filepath.Join(uploadDir, fileName))
+	if err != nil {
+		slog.Error("error al crear archivo", "error", err)
+		return "", fmt.Errorf("error al crear archivo: %w", err)
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, image); err != nil {
+		slog.Error("error al copiar archivo", "error", err)
+		return "", fmt.Errorf("error al copiar archivo: %w", err)
+	}
+
+	slog.Info("archivo guardado correctamente", "filename", fileName)
+
+	return fileName, nil
 }

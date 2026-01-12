@@ -84,17 +84,21 @@ func (h *postHandler) GetPostById(c echo.Context) error {
 }
 
 func (h *postHandler) UploadPostImage(c echo.Context) error {
-	id := c.Param("id")
 
-	file, err := c.FormFile("file")
+	file, handler, err := c.Request().FormFile("image")
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "File not found"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Failed to get image from request"})
+	}
+	defer file.Close()
+
+	filename, err := h.service.SaveImage(file, handler)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	// Here you would handle the file upload logic, e.g., saving the file to a server or cloud storage.
-	_ = file // Placeholder to avoid unused variable error
-	_ = id   // Placeholder to avoid unused variable error
-
-	// TODO: Implement UploadPostImage in the service
-	return c.JSON(http.StatusNotImplemented, map[string]string{"message": "Upload not implemented yet"})
+	return c.JSON(http.StatusOK, map[string]string{
+		"message":  "Image uploaded successfully",
+		"filename": filename,
+	})
 }
