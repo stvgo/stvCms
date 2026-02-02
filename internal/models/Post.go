@@ -15,6 +15,8 @@ type ContentBlock struct {
 	Order    int
 	Content  string `gorm:"type:text"`
 	Language string `gorm:"type:varchar(50)"`
-	PostID   uint
-	Post     Post `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+
+	//
+	PostID uint
+	Post   Post `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }

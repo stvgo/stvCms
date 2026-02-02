@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"net/http"
 	"strconv"
 	"stvCms/internal/rest/request"
@@ -101,4 +102,17 @@ func (h *postHandler) UploadPostImage(c echo.Context) error {
 		"message":  "Image uploaded successfully",
 		"filename": filename,
 	})
+}
+
+func (h *postHandler) GetImage(c echo.Context) error {
+	filename := c.Param("filename")
+
+	image, err := h.service.GetImage(filename)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	c.Response().Header().Set("Content-Type", "image/jpeg")
+	return c.Stream(http.StatusOK, "image/jpeg", bytes.NewReader(image))
 }

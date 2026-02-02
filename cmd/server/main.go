@@ -68,6 +68,7 @@ func startServer() {
 	postGroup.GET("/getPost/:id", postHandler.GetPostById)
 	postGroup.PUT("/update", postHandler.UpdatePost)
 	postGroup.POST("/uploadImage", postHandler.UploadPostImage)
+	postGroup.GET("/image/:filename", postHandler.GetImage)
 	//postGroup.DELETE("/delete/:id", postHandler.DeletePostById)
 	//
 	// login

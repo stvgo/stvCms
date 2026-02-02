@@ -2,7 +2,10 @@ package services
 
 import (
 	"fmt"
-	"io"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"log/slog"
 	"mime/multipart"
 	"os"
@@ -13,6 +16,7 @@ import (
 	"stvCms/internal/rest/request"
 	"stvCms/internal/rest/response"
 
+	"github.com/disintegration/imaging"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -24,10 +28,15 @@ type IPostService interface {
 	UpdatePost(req request.UpdatePostRequest) (string, error)
 	DeletePostById(id string) (string, error)
 	SaveImage(image multipart.File, handler *multipart.FileHeader) (string, error)
+	GetImage(filename string) ([]byte, error)
 }
 
 type postService struct {
 	repository repository.IPostRepository
+}
+
+func (ps *postService) GetImage(filename string) ([]byte, error) {
+	return os.ReadFile(filepath.Join("././public/uploads", filename))
 }
 
 func NewPostService() *postService {
@@ -124,42 +133,33 @@ func (ps *postService) GetPostById(id int) (response.PostResponse, error) {
 }
 
 func (ps *postService) UpdatePost(req request.UpdatePostRequest) (string, error) {
-	postModel, err := ps.repository.GetPostById(req.Id)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return "Post no encontrado con ese ID", err
-		}
-		return "Error al buscar el post", err
+	ok := ps.repository.ExistsPost(int(req.Id))
+	if !ok {
+		return "", gorm.ErrRecordNotFound
 	}
 
-	// Actualizar título si se proporciona
-	if req.Title != "" {
-		postModel.Title = req.Title
+	var contentBlocks []models.ContentBlock
+
+	for _, block := range req.ContentBlocks {
+		contentBlocks = append(contentBlocks, models.ContentBlock{
+			Type:     block.Type,
+			Order:    block.Order,
+			Content:  block.Content,
+			Language: block.Language,
+		})
+	}
+	postModel := models.Post{
+		Title:         req.Title,
+		ContentBlocks: contentBlocks,
 	}
 
-	// Actualizar content blocks si se proporcionan
-	if len(req.ContentBlocks) > 0 {
-		// Limpiar los bloques existentes
-		postModel.ContentBlocks = []models.ContentBlock{}
+	result, err := ps.repository.UpdatePost(req.Id, postModel)
 
-		// Agregar los nuevos bloques
-		for _, block := range req.ContentBlocks {
-			contentBlock := models.ContentBlock{
-				Type:     block.Type,
-				Order:    block.Order,
-				Content:  block.Content,
-				Language: block.Language,
-			}
-			postModel.ContentBlocks = append(postModel.ContentBlocks, contentBlock)
-		}
-	}
-
-	postUpdated, err := ps.repository.UpdatePost(req.Id, postModel)
 	if err != nil {
 		return "", err
 	}
 
-	return postUpdated, nil
+	return result, nil
 }
 
 func (ps *postService) DeletePostById(id string) (string, error) {
@@ -174,35 +174,52 @@ func (ps *postService) DeletePostById(id string) (string, error) {
 	return "Post borrado", nil
 }
 
-func (ps *postService) SaveImage(image multipart.File, handler *multipart.FileHeader) (string, error) {
+func (ps *postService) SaveImage(imageFile multipart.File, handler *multipart.FileHeader) (string, error) {
 	maxSize := int64(10 << 20) // 10 MB
 	if handler.Size > maxSize {
 		return "", fmt.Errorf("el archivo excede el tamaño máximo permitido de 10MB")
 	}
 
+	img, format, err := image.Decode(imageFile)
+	if err != nil {
+		return "", fmt.Errorf("error al decodificar la imagen: %w", err)
+	}
+
+	maxWidth := 1920
+	maxHeight := 1920
+	minSizeForResize := int64(3 << 20) // 3 MB
+
+	resizedImg := img
+	bounds := img.Bounds()
+
+	if (handler.Size > minSizeForResize) || (bounds.Dx() > maxWidth || bounds.Dy() > maxHeight) {
+		if bounds.Dx() > maxWidth || bounds.Dy() > maxHeight {
+			resizedImg = imaging.Fit(img, maxWidth, maxHeight, imaging.Lanczos)
+			slog.Info("imagen redimensionada", "original", fmt.Sprintf("%dx%d", bounds.Dx(), bounds.Dy()), "new", fmt.Sprintf("%dx%d", resizedImg.Bounds().Dx(), resizedImg.Bounds().Dy()))
+		}
+	}
+
 	ext := filepath.Ext(handler.Filename)
+	if ext == "" {
+		ext = "." + format
+	}
 	fileName := uuid.New().String() + ext
 
 	uploadDir := "././public/uploads"
-	err := os.MkdirAll(uploadDir, os.ModePerm)
+	err = os.MkdirAll(uploadDir, os.ModePerm)
 	if err != nil {
 		slog.Error("error al crear directorio", "error", err)
 		return "", fmt.Errorf("error al crear directorio: %w", err)
 	}
 
-	dst, err := os.Create(filepath.Join(uploadDir, fileName))
+	outputPath := filepath.Join(uploadDir, fileName)
+	err = imaging.Save(resizedImg, outputPath)
 	if err != nil {
-		slog.Error("error al crear archivo", "error", err)
-		return "", fmt.Errorf("error al crear archivo: %w", err)
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, image); err != nil {
-		slog.Error("error al copiar archivo", "error", err)
-		return "", fmt.Errorf("error al copiar archivo: %w", err)
+		slog.Error("error al guardar imagen", "error", err)
+		return "", fmt.Errorf("error al guardar imagen: %w", err)
 	}
 
-	slog.Info("archivo guardado correctamente", "filename", fileName)
+	slog.Info("imagen guardada correctamente", "filename", fileName, "width", resizedImg.Bounds().Dx(), "height", resizedImg.Bounds().Dy())
 
 	return fileName, nil
 }

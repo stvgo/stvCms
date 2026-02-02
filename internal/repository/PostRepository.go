@@ -14,8 +14,7 @@ type IPostRepository interface {
 	UpdatePost(id uint, post models.Post) (string, error)
 	GetPostById(id uint) (models.Post, error)
 	DeletePostById(id int) bool
-	SavePostImage(postID int, publicUrl string) error
-	GetPostImage(postID uint) (string, error)
+	ExistsPost(id int) bool
 }
 
 type postRepository struct {
@@ -80,12 +79,11 @@ func (pr *postRepository) DeletePostById(id int) bool {
 	return ok
 }
 
-func (pr *postRepository) SavePostImage(postID int, publicUrl string) error {
-	// TODO
-	return errors.New("Not implemented")
-}
+func (pr *postRepository) ExistsPost(id int) bool {
+	err := pr.db.First(&models.Post{}, id).Error
 
-func (pr *postRepository) GetPostImage(postID uint) (string, error) {
-	//TODO implement me
-	panic("implement me")
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false
+	}
+	return true
 }
