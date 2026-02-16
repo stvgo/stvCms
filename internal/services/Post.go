@@ -1,6 +1,8 @@
 package services
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -15,9 +17,11 @@ import (
 	"stvCms/internal/repository"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/rest/response"
+	"time"
 
 	"github.com/disintegration/imaging"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -32,16 +36,20 @@ type IPostService interface {
 }
 
 type postService struct {
-	repository repository.IPostRepository
+	repository  repository.IPostRepository
+	ctx         context.Context
+	redisClient *redis.Client
 }
 
 func (ps *postService) GetImage(filename string) ([]byte, error) {
 	return os.ReadFile(filepath.Join("././public/uploads", filename))
 }
 
-func NewPostService() *postService {
+func NewPostService(ctx context.Context, redis redis.Client) *postService {
 	return &postService{
-		repository: repository.NewPostGormRepository(),
+		repository:  repository.NewPostGormRepository(),
+		ctx:         ctx,
+		redisClient: &redis,
 	}
 }
 
@@ -70,10 +78,21 @@ func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error)
 }
 
 func (ps *postService) GetPosts() ([]response.PostResponse, error) {
-	posts := []response.PostResponse{}
-	modelPosts, err := ps.repository.GetPosts()
-	if err != nil {
-		return posts, nil
+	var posts []response.PostResponse
+	var modelPosts []models.Post
+
+	val, err := ps.redisClient.Get(ps.ctx, "posts:all").Result()
+	if err == nil && val != "" {
+		if err := json.Unmarshal([]byte(val), &modelPosts); err != nil {
+			return posts, nil
+		}
+	} else {
+		modelPosts, err = ps.repository.GetPosts()
+		if err != nil {
+			return posts, err
+		}
+		data, _ := json.Marshal(modelPosts)
+		_ = ps.redisClient.Set(ps.ctx, "posts:all", string(data), 24*time.Hour).Err()
 	}
 
 	for _, post := range modelPosts {

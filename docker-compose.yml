@@ -1,0 +1,17 @@
+services:
+  redis:
+    image: redis:8.2.4-alpine3.22
+    container_name: stv_cms_backend
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_data:

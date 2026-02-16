@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
+	"stvCms/internal/clients"
 	"stvCms/internal/config"
 	"stvCms/internal/handlers"
 
@@ -57,9 +59,14 @@ func startServer() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
+	// redis
+	redisAddr := os.Getenv("REDIS_ADDR")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+	ctx := context.Background()
+	redisClient := clients.NewRedisClient(ctx, redisAddr, redisPassword)
+
 	// Handlers
-	postHandler := handlers.NewPostHandler()
-	//login := handlers.NewLoginAndRegisterHandler()
+	postHandler := handlers.NewPostHandler(ctx, *redisClient)
 
 	// Post routes
 	postGroup := e.Group("/post")

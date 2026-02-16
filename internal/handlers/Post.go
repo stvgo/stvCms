@@ -2,21 +2,26 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"strconv"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/services"
 
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 )
 
 type postHandler struct {
 	service services.IPostService
 }
 
-func NewPostHandler() *postHandler {
+func NewPostHandler(ctx context.Context, redis redis.Client) *postHandler {
 	return &postHandler{
-		service: services.NewPostService(),
+		service: services.NewPostService(
+			ctx,
+			redis,
+		),
 	}
 }
 
