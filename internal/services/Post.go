@@ -74,11 +74,13 @@ func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error)
 		return "No se pudo crear el post", err
 	}
 
+	_ = ps.redisClient.Del(ps.ctx, "posts:all").Err()
+
 	return modelPost, nil
 }
 
 func (ps *postService) GetPosts() ([]response.PostResponse, error) {
-	var posts []response.PostResponse
+	posts := []response.PostResponse{}
 	var modelPosts []models.Post
 
 	val, err := ps.redisClient.Get(ps.ctx, "posts:all").Result()
@@ -91,8 +93,10 @@ func (ps *postService) GetPosts() ([]response.PostResponse, error) {
 		if err != nil {
 			return posts, err
 		}
-		data, _ := json.Marshal(modelPosts)
-		_ = ps.redisClient.Set(ps.ctx, "posts:all", string(data), 24*time.Hour).Err()
+		if len(modelPosts) > 0 {
+			data, _ := json.Marshal(modelPosts)
+			_ = ps.redisClient.Set(ps.ctx, "posts:all", string(data), 24*time.Hour).Err()
+		}
 	}
 
 	for _, post := range modelPosts {
@@ -178,6 +182,8 @@ func (ps *postService) UpdatePost(req request.UpdatePostRequest) (string, error)
 		return "", err
 	}
 
+	_ = ps.redisClient.Del(ps.ctx, "posts:all").Err()
+
 	return result, nil
 }
 
@@ -189,6 +195,8 @@ func (ps *postService) DeletePostById(id string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("Error al borrar el post")
 	}
+
+	_ = ps.redisClient.Del(ps.ctx, "posts:all").Err()
 
 	return "Post borrado", nil
 }

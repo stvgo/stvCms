@@ -37,7 +37,7 @@ func (pr *postRepository) CreatePost(post models.Post) (string, error) {
 
 func (pr *postRepository) GetPosts() ([]models.Post, error) {
 	var posts []models.Post
-	err := pr.db.Find(&posts).Error
+	err := pr.db.Preload("ContentBlocks").Find(&posts).Error
 	if err != nil {
 		return posts, err
 	}
