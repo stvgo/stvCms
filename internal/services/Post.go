@@ -214,7 +214,9 @@ func (ps *postService) SaveImage(imageFile multipart.File, handler *multipart.Fi
 	if (handler.Size > minSizeForResize) || (bounds.Dx() > maxWidth || bounds.Dy() > maxHeight) {
 		if bounds.Dx() > maxWidth || bounds.Dy() > maxHeight {
 			resizedImg = imaging.Fit(img, maxWidth, maxHeight, imaging.Lanczos)
-			slog.Info("imagen redimensionada", "original", fmt.Sprintf("%dx%d", bounds.Dx(), bounds.Dy()), "new", fmt.Sprintf("%dx%d", resizedImg.Bounds().Dx(), resizedImg.Bounds().Dy()))
+			slog.Info("imagen redimensionada", "original",
+				fmt.Sprintf("%dx%d", bounds.Dx(), bounds.Dy()), "new",
+				fmt.Sprintf("%dx%d", resizedImg.Bounds().Dx(), resizedImg.Bounds().Dy()))
 		}
 	}
 

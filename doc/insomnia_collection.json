@@ -1,0 +1,173 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-04-09",
+  "__export_source": "claude-code",
+  "resources": [
+    {
+      "_id": "wrk_stvCms",
+      "_type": "workspace",
+      "name": "stvCms API",
+      "description": "Colección de endpoints para el CMS de stv"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_stvCms",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:{{SERVER_PORT}}",
+        "SERVER_PORT": "8080"
+      }
+    },
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "parentId": "wrk_stvCms",
+      "name": "Auth"
+    },
+    {
+      "_id": "fld_post",
+      "_type": "request_group",
+      "parentId": "wrk_stvCms",
+      "name": "Posts"
+    },
+
+    {
+      "_id": "req_auth_home",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Home (login page)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/auth/",
+      "headers": [],
+      "body": {}
+    },
+    {
+      "_id": "req_auth_signin",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Sign In with Google",
+      "method": "GET",
+      "url": "{{ _.base_url }}/auth/google",
+      "headers": [],
+      "body": {},
+      "description": "Inicia el flujo OAuth con Google. El navegador redirigirá automáticamente."
+    },
+    {
+      "_id": "req_auth_callback",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "OAuth Callback",
+      "method": "GET",
+      "url": "{{ _.base_url }}/auth/google/callback",
+      "headers": [],
+      "body": {},
+      "description": "Endpoint de callback OAuth. Google redirige aquí tras autenticar al usuario."
+    },
+    {
+      "_id": "req_auth_success",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Success (post-login)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/auth/success",
+      "headers": [],
+      "body": {},
+      "description": "Página de éxito tras completar el login OAuth. Requiere sesión activa."
+    },
+
+    {
+      "_id": "req_post_create",
+      "_type": "request",
+      "parentId": "fld_post",
+      "name": "Create Post",
+      "method": "POST",
+      "url": "{{ _.base_url }}/post/create",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"title\": \"Mi primer post\",\n  \"user_id\": \"user-123\",\n  \"content_blocks\": [\n    {\n      \"type\": \"text\",\n      \"order\": 1,\n      \"content\": \"Este es el contenido de texto del post.\"\n    },\n    {\n      \"type\": \"code\",\n      \"order\": 2,\n      \"content\": \"fmt.Println(\\\"Hello, World!\\\")\",\n      \"language\": \"go\"\n    }\n  ]\n}"
+      },
+      "description": "Crea un nuevo post. Tipos de content_block: text, code, image, url."
+    },
+    {
+      "_id": "req_post_getAll",
+      "_type": "request",
+      "parentId": "fld_post",
+      "name": "Get All Posts",
+      "method": "GET",
+      "url": "{{ _.base_url }}/post/getAll",
+      "headers": [],
+      "body": {},
+      "description": "Obtiene todos los posts. Resultado cacheado en Redis por 24h (clave: posts:all)."
+    },
+    {
+      "_id": "req_post_getById",
+      "_type": "request",
+      "parentId": "fld_post",
+      "name": "Get Post by ID",
+      "method": "GET",
+      "url": "{{ _.base_url }}/post/getPost/1",
+      "headers": [],
+      "body": {},
+      "description": "Obtiene un post por su ID numérico."
+    },
+    {
+      "_id": "req_post_update",
+      "_type": "request",
+      "parentId": "fld_post",
+      "name": "Update Post",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/post/update",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"id\": 1,\n  \"title\": \"Título actualizado\",\n  \"content_blocks\": [\n    {\n      \"type\": \"text\",\n      \"order\": 1,\n      \"content\": \"Contenido actualizado.\"\n    }\n  ]\n}"
+      },
+      "description": "Actualiza un post existente. El campo id es requerido."
+    },
+    {
+      "_id": "req_post_uploadImage",
+      "_type": "request",
+      "parentId": "fld_post",
+      "name": "Upload Image",
+      "method": "POST",
+      "url": "{{ _.base_url }}/post/uploadImage",
+      "headers": [],
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          {
+            "name": "image",
+            "type": "file",
+            "fileName": "",
+            "description": "Imagen a subir (JPEG, PNG o GIF). Máx 10MB. Se redimensiona si supera 3MB o 1920x1920px."
+          }
+        ]
+      },
+      "description": "Sube una imagen para un post. Formatos: JPEG, PNG, GIF. Límite: 10MB."
+    },
+    {
+      "_id": "req_post_getImage",
+      "_type": "request",
+      "parentId": "fld_post",
+      "name": "Get Image",
+      "method": "GET",
+      "url": "{{ _.base_url }}/post/image/nombre-del-archivo.jpg",
+      "headers": [],
+      "body": {},
+      "description": "Obtiene una imagen subida previamente. Reemplaza 'nombre-del-archivo.jpg' con el filename devuelto por Upload Image."
+    }
+  ]
+}
