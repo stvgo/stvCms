@@ -13,12 +13,26 @@ type IPostRepository interface {
 	GetPosts() ([]models.Post, error)
 	UpdatePost(id uint, post models.Post) (string, error)
 	GetPostById(id uint) (models.Post, error)
+	GetPostsByFilter(filter string) ([]models.Post, error)
 	DeletePostById(id int) bool
 	ExistsPost(id int) bool
 }
 
 type postRepository struct {
 	db *gorm.DB
+}
+
+func (pr *postRepository) GetPostsByFilter(filter string) ([]models.Post, error) {
+	var posts []models.Post
+	err := pr.db.Preload("ContentBlocks").
+		Where("title LIKE ?", "%"+filter+"%").
+		Or("user_id LIKE ?", "%"+filter+"%").
+		Or("id IN (SELECT post_id FROM content_blocks WHERE content LIKE ?)", "%"+filter+"%").
+		Find(&posts).Error
+	if err != nil {
+		return posts, err
+	}
+	return posts, nil
 }
 
 func NewPostGormRepository() *postRepository {

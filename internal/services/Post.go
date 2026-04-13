@@ -29,6 +29,7 @@ type IPostService interface {
 	CreatePost(req request.CreatePostRequest) (string, error)
 	GetPosts() ([]response.PostResponse, error)
 	GetPostById(id int) (response.PostResponse, error)
+	GetPostByFilter(filter string) ([]response.PostResponse, error)
 	UpdatePost(req request.UpdatePostRequest) (string, error)
 	DeletePostById(id string) (string, error)
 	SaveImage(image multipart.File, handler *multipart.FileHeader) (string, error)
@@ -153,6 +154,40 @@ func (ps *postService) GetPostById(id int) (response.PostResponse, error) {
 	}
 
 	return postResponse, nil
+}
+
+func (ps *postService) GetPostByFilter(filter string) ([]response.PostResponse, error) {
+	modelPosts, err := ps.repository.GetPostsByFilter(filter)
+	if err != nil {
+		return []response.PostResponse{}, err
+	}
+
+	var posts []response.PostResponse
+
+	for _, post := range modelPosts {
+		var contentBlocks []response.ContentBlockResponse
+		for _, block := range post.ContentBlocks {
+			contentBlocks = append(contentBlocks, response.ContentBlockResponse{
+				Id:       block.ID,
+				Type:     block.Type,
+				Order:    block.Order,
+				Content:  block.Content,
+				Language: block.Language,
+			})
+		}
+
+		data := response.PostResponse{
+			Id:            post.Model.ID,
+			CreatedAt:     post.CreatedAt,
+			UpdatedAt:     post.UpdatedAt,
+			Title:         post.Title,
+			UserID:        post.UserID,
+			ContentBlocks: contentBlocks,
+		}
+		posts = append(posts, data)
+	}
+
+	return posts, nil
 }
 
 func (ps *postService) UpdatePost(req request.UpdatePostRequest) (string, error) {

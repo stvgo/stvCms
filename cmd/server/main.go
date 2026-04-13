@@ -77,6 +77,7 @@ func startServer() {
 	postGroup.POST("/uploadImage", postHandler.UploadPostImage)
 	postGroup.GET("/image/:filename", postHandler.GetImage)
 	postGroup.DELETE("/delete/:id", postHandler.DeletePostById)
+	postGroup.POST("/getPost/:filter", postHandler.GetPostByFilter)
 	//
 	// login
 	authHandler := handlers.NewLoginAndRegisterHandler()

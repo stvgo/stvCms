@@ -121,3 +121,18 @@ func (h *postHandler) GetImage(c echo.Context) error {
 	c.Response().Header().Set("Content-Type", "image/jpeg")
 	return c.Stream(http.StatusOK, "image/jpeg", bytes.NewReader(image))
 }
+
+func (h *postHandler) GetPostByFilter(c echo.Context) error {
+	filter := c.Param("filter")
+
+	if filter == "" {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "filter is empty"})
+	}
+
+	responsePost, err := h.service.GetPostByFilter(filter)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err})
+	}
+
+	return c.JSON(http.StatusOK, responsePost)
+}
