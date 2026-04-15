@@ -19,10 +19,12 @@ func (g geminiGenAI) GenTextAI(text string) (string, error) {
 	// The client gets the API key from the environment variable `GEMINI_API_KEY`.
 	// TODO: generate Gemini api key
 	client, err := genai.NewClient(ctx, nil)
+
 	if err != nil {
 		slog.Error(err.Error())
 		return "", err
 	}
+
 	result, err := client.Models.GenerateContent(
 		ctx,
 		"gemini-3-flash-preview",
