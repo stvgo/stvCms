@@ -34,6 +34,7 @@ type IPostService interface {
 	DeletePostById(id string) (string, error)
 	SaveImage(image multipart.File, handler *multipart.FileHeader) (string, error)
 	GetImage(filename string) ([]byte, error)
+	GenTextAI(text string) (string, error)
 }
 
 type postService struct {
@@ -286,4 +287,9 @@ func (ps *postService) SaveImage(imageFile multipart.File, handler *multipart.Fi
 	slog.Info("imagen guardada correctamente", "filename", fileName, "width", resizedImg.Bounds().Dx(), "height", resizedImg.Bounds().Dy())
 
 	return fileName, nil
+}
+
+func (ps *postService) GenTextAI(text string) (string, error) {
+
+	return "", nil
 }

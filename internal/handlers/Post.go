@@ -136,3 +136,20 @@ func (h *postHandler) GetPostByFilter(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, responsePost)
 }
+
+func (h *postHandler) GetTextAI(c echo.Context) error {
+	text := c.Bind("text_ai")
+
+	if text == nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "text_ai is empty"})
+	}
+
+	response, err := h.service.GenTextAI(text)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err})
+	}
+
+	return c.JSON(http.StatusOK, response)
+
+}
