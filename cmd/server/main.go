@@ -27,7 +27,7 @@ func main() {
 func loadEnv() {
 	err := godotenv.Load()
 	if err != nil {
-		panic("Error loading .env file")
+		log.Println("No .env file found, reading from system environment")
 	}
 }
 
@@ -55,22 +55,17 @@ func initAuth() {
 func startServer() {
 	e := echo.New()
 
-	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// redis
 	redisAddr := os.Getenv("REDIS_ADDR")
 	redisPassword := os.Getenv("REDIS_PASSWORD")
 	ctx := context.Background()
 	redisClient := clients.NewRedisClient(ctx, redisAddr, redisPassword)
 
-	// clients
 	openRouterClient := clients.NewOpenRouter()
-	// Handlers
 	postHandler := handlers.NewPostHandler(ctx, *redisClient, openRouterClient)
 
-	// Post routes
 	postGroup := e.Group("/post")
 	postGroup.POST("/create", postHandler.CreatePost)
 	postGroup.GET("/getAll", postHandler.GetPosts)
@@ -81,8 +76,7 @@ func startServer() {
 	postGroup.DELETE("/delete/:id", postHandler.DeletePostById)
 	postGroup.POST("/getPost/:filter", postHandler.GetPostByFilter)
 	postGroup.GET("/genTextAI", postHandler.GetTextAI)
-	//
-	// login
+
 	authHandler := handlers.NewLoginAndRegisterHandler()
 	authGroup := e.Group("/auth")
 	authGroup.GET("/", authHandler.Home)
@@ -90,11 +84,12 @@ func startServer() {
 	authGroup.GET("/:provider/callback", authHandler.CallbackHandler)
 	authGroup.GET("/success", authHandler.Success)
 
-	// users group
-	//userGroup := e.Group("/user")
-	//userGroup.GET("")
+	port := os.Getenv("SERVER_PORT")
+	if port == "" {
+		port = "8080"
+	}
 
-	err := e.Start("localhost:" + os.Getenv("SERVER_PORT"))
+	err := e.Start("0.0.0.0:" + port)
 	if err != nil {
 		panic(err)
 	}
