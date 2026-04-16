@@ -11,13 +11,15 @@ import (
 )
 
 func Init() *gorm.DB {
-	DB_USER := os.Getenv("DB_USER")
-	DB_PASSWORD := os.Getenv("DB_PASSWORD")
-	DB_HOST := os.Getenv("DB_HOST")
-	DB_PORT := os.Getenv("DB_PORT")
-	DB := os.Getenv("DB")
-
-	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB)
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		DB_USER := os.Getenv("DB_USER")
+		DB_PASSWORD := os.Getenv("DB_PASSWORD")
+		DB_HOST := os.Getenv("DB_HOST")
+		DB_PORT := os.Getenv("DB_PORT")
+		DB := os.Getenv("DB")
+		dbURL = fmt.Sprintf("postgres://%s:%s@%s:%s/%s", DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB)
+	}
 
 	db, err := gorm.Open(postgres.Open(dbURL), &gorm.Config{})
 
