@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"os"
 	"stvCms/internal/clients"
 	"stvCms/internal/config"
@@ -37,7 +38,8 @@ func initAuth() {
 	callbackURL := os.Getenv("CLIENT_CALLBACK_URL")
 
 	if clientID == "" || clientSecret == "" || callbackURL == "" {
-		log.Fatal("Environment variables (CLIENT_ID, CLIENT_SECRET, CLIENT_CALLBACK_URL) are required")
+		slog.Error("Warning: Google OAuth not configured, skipping auth setup")
+		return
 	}
 
 	goth.UseProviders(
