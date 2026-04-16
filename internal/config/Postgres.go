@@ -18,7 +18,10 @@ func Init() *gorm.DB {
 		DB_HOST := os.Getenv("DB_HOST")
 		DB_PORT := os.Getenv("DB_PORT")
 		DB := os.Getenv("DB")
+		log.Printf("DB config — USER=%q HOST=%q PORT=%q DB=%q", DB_USER, DB_HOST, DB_PORT, DB)
 		dbURL = fmt.Sprintf("postgres://%s:%s@%s:%s/%s", DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB)
+	} else {
+		log.Println("DB config — using DATABASE_URL")
 	}
 
 	db, err := gorm.Open(postgres.Open(dbURL), &gorm.Config{})
