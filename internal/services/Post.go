@@ -19,6 +19,8 @@ import (
 	"stvCms/internal/rest/response"
 	"time"
 
+	"stvCms/internal/clients"
+
 	"github.com/disintegration/imaging"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -38,20 +40,22 @@ type IPostService interface {
 }
 
 type postService struct {
-	repository  repository.IPostRepository
-	ctx         context.Context
-	redisClient *redis.Client
+	repository       repository.IPostRepository
+	ctx              context.Context
+	redisClient      *redis.Client
+	openRouterClient clients.IOpenRouterClient
 }
 
 func (ps *postService) GetImage(filename string) ([]byte, error) {
 	return os.ReadFile(filepath.Join("././public/uploads", filename))
 }
 
-func NewPostService(ctx context.Context, redis redis.Client) *postService {
+func NewPostService(ctx context.Context, redis redis.Client, openRouterClient clients.IOpenRouterClient) *postService {
 	return &postService{
-		repository:  repository.NewPostGormRepository(),
-		ctx:         ctx,
-		redisClient: &redis,
+		repository:       repository.NewPostGormRepository(),
+		ctx:              ctx,
+		redisClient:      &redis,
+		openRouterClient: openRouterClient,
 	}
 }
 
@@ -290,6 +294,14 @@ func (ps *postService) SaveImage(imageFile multipart.File, handler *multipart.Fi
 }
 
 func (ps *postService) GenTextAI(text string) (string, error) {
+	if text == "" {
+		return "", fmt.Errorf("error al generar el texto")
+	}
 
-	return "", nil
+	textAI, err := ps.openRouterClient.GenText(text)
+	if err != nil {
+		slog.Error("error al generar el texto", "error", err)
+		return "", err
+	}
+	return textAI, nil
 }

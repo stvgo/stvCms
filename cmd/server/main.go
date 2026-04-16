@@ -65,8 +65,10 @@ func startServer() {
 	ctx := context.Background()
 	redisClient := clients.NewRedisClient(ctx, redisAddr, redisPassword)
 
+	// clients
+	openRouterClient := clients.NewOpenRouter()
 	// Handlers
-	postHandler := handlers.NewPostHandler(ctx, *redisClient)
+	postHandler := handlers.NewPostHandler(ctx, *redisClient, openRouterClient)
 
 	// Post routes
 	postGroup := e.Group("/post")

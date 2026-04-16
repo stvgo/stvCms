@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"stvCms/internal/clients"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/services"
 
@@ -16,11 +17,15 @@ type postHandler struct {
 	service services.IPostService
 }
 
-func NewPostHandler(ctx context.Context, redis redis.Client) *postHandler {
+func NewPostHandler(ctx context.Context,
+	redis redis.Client,
+	openRouterClient clients.IOpenRouterClient,
+) *postHandler {
 	return &postHandler{
 		service: services.NewPostService(
 			ctx,
 			redis,
+			openRouterClient,
 		),
 	}
 }
@@ -138,13 +143,13 @@ func (h *postHandler) GetPostByFilter(c echo.Context) error {
 }
 
 func (h *postHandler) GetTextAI(c echo.Context) error {
-	var text string
-	err := echo.PathParamsBinder(c).String("text_ai", &text).BindError()
+	textAI := request.TextAI{}
+	err := c.Bind(&textAI)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "text_ai is empty"})
 	}
 
-	response, err := h.service.GenTextAI(text)
+	response, err := h.service.GenTextAI(textAI.TextAI)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err})

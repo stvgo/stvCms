@@ -8,30 +8,34 @@ import (
 	openrouter "github.com/revrost/go-openrouter"
 )
 
-type openRouter struct {
+type IOpenRouterClient interface {
+	GenText(text string) (string, error)
 }
 
-func NewOpenRouter() *openRouter {
-	return &openRouter{}
+type openRouterClient struct {
+	client *openrouter.Client
 }
 
-func (ro *openRouter) Init() (string, error) {
+func NewOpenRouter() IOpenRouterClient {
 	client := openrouter.NewClient(
 		os.Getenv("OPEN_ROUTER_API_KEY"),
-		openrouter.WithXTitle("stv CMS"))
+		openrouter.WithXTitle("stv CMS"),
+	)
+	return &openRouterClient{client: client}
+}
 
-	resp, err := client.CreateChatCompletion(
+func (ro *openRouterClient) GenText(text string) (string, error) {
+	resp, err := ro.client.CreateChatCompletion(
 		context.Background(),
 		openrouter.ChatCompletionRequest{
-			Model: "deepseek/deepseek-chat-v3.1:free",
+			Model: "openrouter/free",
 			Messages: []openrouter.ChatCompletionMessage{
-				openrouter.UserMessage("Hello!"),
+				openrouter.UserMessage(text),
 			},
 		},
 	)
-
 	if err != nil {
-		slog.Error("ChatCompletion error: %v\n", err)
+		slog.Error("ChatCompletion error", "error", err)
 		return "", err
 	}
 
