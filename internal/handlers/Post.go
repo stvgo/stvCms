@@ -138,9 +138,9 @@ func (h *postHandler) GetPostByFilter(c echo.Context) error {
 }
 
 func (h *postHandler) GetTextAI(c echo.Context) error {
-	text := c.Bind("text_ai")
-
-	if text == nil {
+	var text string
+	err := echo.PathParamsBinder(c).String("text_ai", &text).BindError()
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "text_ai is empty"})
 	}
 
