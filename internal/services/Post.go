@@ -61,8 +61,9 @@ func NewPostService(ctx context.Context, redis redis.Client, openRouterClient cl
 
 func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error) {
 	post := models.Post{
-		Title:  req.Title,
-		UserID: req.UserID,
+		Title:     req.Title,
+		UserID:    req.UserID,
+		IsVisible: req.IsVisible,
 	}
 
 	for _, block := range req.ContentBlocks {
@@ -123,6 +124,7 @@ func (ps *postService) GetPosts() ([]response.PostResponse, error) {
 			UpdatedAt:     post.UpdatedAt,
 			Title:         post.Title,
 			UserID:        post.UserID,
+			IsVisible:     post.IsVisible,
 			ContentBlocks: contentBlocks,
 		}
 		posts = append(posts, data)
@@ -155,6 +157,7 @@ func (ps *postService) GetPostById(id int) (response.PostResponse, error) {
 		UpdatedAt:     post.UpdatedAt,
 		Title:         post.Title,
 		UserID:        post.UserID,
+		IsVisible:     post.IsVisible,
 		ContentBlocks: contentBlocks,
 	}
 
@@ -187,6 +190,7 @@ func (ps *postService) GetPostByFilter(filter string) ([]response.PostResponse, 
 			UpdatedAt:     post.UpdatedAt,
 			Title:         post.Title,
 			UserID:        post.UserID,
+			IsVisible:     post.IsVisible,
 			ContentBlocks: contentBlocks,
 		}
 		posts = append(posts, data)
@@ -298,7 +302,11 @@ func (ps *postService) GenTextAI(text string) (string, error) {
 		return "", fmt.Errorf("error al generar el texto")
 	}
 
-	textAI, err := ps.openRouterClient.GenText(text)
+	prePrompt := fmt.Sprintf("Complementa el siguiente texto para crear un post de blog atractivo y bien estructurado."+
+		" El texto debe ser claro, conciso y fácil de entender."+
+		" Asegúrate de incluir una introducción, un desarrollo y una conclusión. El tema del post es: %s", text)
+
+	textAI, err := ps.openRouterClient.GenText(prePrompt)
 	if err != nil {
 		slog.Error("error al generar el texto", "error", err)
 		return "", err

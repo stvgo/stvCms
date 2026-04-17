@@ -4,6 +4,7 @@ type CreatePostRequest struct {
 	Title         string         `json:"title" binding:"required"`
 	UserID        string         `json:"user_id" binding:"required"`
 	ContentBlocks []ContentBlock `json:"content_blocks"`
+	IsVisible     bool           `json:"is_visible" default:"true"`
 }
 
 type ContentBlock struct {

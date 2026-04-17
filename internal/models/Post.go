@@ -7,6 +7,7 @@ type Post struct {
 	Title         string
 	UserID        string
 	ContentBlocks []ContentBlock
+	IsVisible     bool `gorm:"type:boolean"`
 }
 
 type ContentBlock struct {
