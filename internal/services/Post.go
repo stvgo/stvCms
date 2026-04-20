@@ -302,14 +302,16 @@ func (ps *postService) GenTextAI(text string) (string, error) {
 		return "", fmt.Errorf("error al generar el texto")
 	}
 
+	formatPrompt := "Realiza un formateo a este texto pero separalo por parrafos y que quede con formato html"
 	prePrompt := fmt.Sprintf("Complementa el siguiente texto para crear un post de blog atractivo y bien estructurado."+
 		" El texto debe ser claro, conciso y fácil de entender."+
-		" Asegúrate de incluir una introducción, un desarrollo y una conclusión. El tema del post es: %s", text)
+		" Asegúrate de incluir una introducción, un desarrollo y una conclusión. El tema del post es: %s. %s", text, formatPrompt)
 
 	textAI, err := ps.openRouterClient.GenText(prePrompt)
 	if err != nil {
 		slog.Error("error al generar el texto", "error", err)
 		return "", err
 	}
+
 	return textAI, nil
 }

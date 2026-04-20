@@ -1,7 +1,7 @@
 {
   "_type": "export",
   "__export_format": 4,
-  "__export_date": "2026-04-09",
+  "__export_date": "2026-04-19",
   "__export_source": "claude-code",
   "resources": [
     {
@@ -92,9 +92,9 @@
       ],
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"title\": \"Mi primer post\",\n  \"user_id\": \"user-123\",\n  \"content_blocks\": [\n    {\n      \"type\": \"text\",\n      \"order\": 1,\n      \"content\": \"Este es el contenido de texto del post.\"\n    },\n    {\n      \"type\": \"code\",\n      \"order\": 2,\n      \"content\": \"fmt.Println(\\\"Hello, World!\\\")\",\n      \"language\": \"go\"\n    }\n  ]\n}"
+        "text": "{\n  \"title\": \"Mi primer post\",\n  \"user_id\": \"user-123\",\n  \"is_visible\": true,\n  \"content_blocks\": [\n    {\n      \"type\": \"text\",\n      \"order\": 1,\n      \"content\": \"Este es el contenido de texto del post.\"\n    },\n    {\n      \"type\": \"code\",\n      \"order\": 2,\n      \"content\": \"fmt.Println(\\\"Hello, World!\\\")\",\n      \"language\": \"go\"\n    }\n  ]\n}"
       },
-      "description": "Crea un nuevo post. Tipos de content_block: text, code, image, url."
+      "description": "Crea un nuevo post. Campos: title (req), user_id (req), is_visible (bool, default true). Tipos de content_block: text, code, image, url. Responde 201 con el post creado."
     },
     {
       "_id": "req_post_getAll",
@@ -119,6 +119,17 @@
       "description": "Obtiene un post por su ID numérico."
     },
     {
+      "_id": "req_post_getByFilter",
+      "_type": "request",
+      "parentId": "fld_post",
+      "name": "Get Posts by Filter",
+      "method": "POST",
+      "url": "{{ _.base_url }}/post/getPost/:filter",
+      "headers": [],
+      "body": {},
+      "description": "Obtiene posts aplicando un filtro. Reemplaza ':filter' con el criterio deseado (e.g. el valor del campo por el que filtrar). Responde 200 con un array de posts."
+    },
+    {
       "_id": "req_post_update",
       "_type": "request",
       "parentId": "fld_post",
@@ -135,7 +146,18 @@
         "mimeType": "application/json",
         "text": "{\n  \"id\": 1,\n  \"title\": \"Título actualizado\",\n  \"content_blocks\": [\n    {\n      \"type\": \"text\",\n      \"order\": 1,\n      \"content\": \"Contenido actualizado.\"\n    }\n  ]\n}"
       },
-      "description": "Actualiza un post existente. El campo id es requerido."
+      "description": "Actualiza un post existente. El campo id es requerido. Campos opcionales: title, content_blocks."
+    },
+    {
+      "_id": "req_post_delete",
+      "_type": "request",
+      "parentId": "fld_post",
+      "name": "Delete Post by ID",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/post/delete/1",
+      "headers": [],
+      "body": {},
+      "description": "Elimina un post por su ID numérico. Responde 204 con { \"message\": \"Deleted\" }."
     },
     {
       "_id": "req_post_uploadImage",
@@ -156,7 +178,7 @@
           }
         ]
       },
-      "description": "Sube una imagen para un post. Formatos: JPEG, PNG, GIF. Límite: 10MB."
+      "description": "Sube una imagen para un post. Formatos: JPEG, PNG, GIF. Límite: 10MB. Responde { \"message\": \"Image uploaded successfully\", \"filename\": \"<nombre>\" }."
     },
     {
       "_id": "req_post_getImage",
@@ -168,6 +190,25 @@
       "headers": [],
       "body": {},
       "description": "Obtiene una imagen subida previamente. Reemplaza 'nombre-del-archivo.jpg' con el filename devuelto por Upload Image."
+    },
+    {
+      "_id": "req_post_genTextAI",
+      "_type": "request",
+      "parentId": "fld_post",
+      "name": "Generate Text with AI",
+      "method": "GET",
+      "url": "{{ _.base_url }}/post/genTextAI",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"text_ai\": \"Escribe una introducción sobre Go y sus ventajas.\"\n}"
+      },
+      "description": "Genera texto usando IA (OpenRouter). Envía un prompt en el campo 'text_ai' y recibe el texto generado. Responde 200 con el contenido generado."
     }
   ]
 }
