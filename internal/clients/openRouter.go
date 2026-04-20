@@ -28,7 +28,7 @@ func (ro *openRouterClient) GenText(text string) (string, error) {
 	resp, err := ro.client.CreateChatCompletion(
 		context.Background(),
 		openrouter.ChatCompletionRequest{
-			Model: "nvidia/nemotron-3-super-120b-a12b:free",
+			Model: "openrouter/elephant-alpha",
 			Messages: []openrouter.ChatCompletionMessage{
 				openrouter.UserMessage(text),
 			},
