@@ -50,9 +50,9 @@ func (ps *postService) GetImage(filename string) ([]byte, error) {
 	return os.ReadFile(filepath.Join("././public/uploads", filename))
 }
 
-func NewPostService(ctx context.Context, redis redis.Client, openRouterClient clients.IOpenRouterClient) *postService {
+func NewPostService(ctx context.Context, redis redis.Client, openRouterClient clients.IOpenRouterClient, db *gorm.DB) *postService {
 	return &postService{
-		repository:       repository.NewPostGormRepository(),
+		repository:       repository.NewPostGormRepository(db),
 		ctx:              ctx,
 		redisClient:      &redis,
 		openRouterClient: openRouterClient,

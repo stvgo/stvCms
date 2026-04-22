@@ -3,7 +3,6 @@ package clients
 import (
 	"context"
 	"log/slog"
-	"os"
 
 	openrouter "github.com/revrost/go-openrouter"
 )
@@ -16,9 +15,9 @@ type openRouterClient struct {
 	client *openrouter.Client
 }
 
-func NewOpenRouter() IOpenRouterClient {
+func NewOpenRouter(apiKey string) IOpenRouterClient {
 	client := openrouter.NewClient(
-		os.Getenv("OPEN_ROUTER_API_KEY"),
+		apiKey,
 		openrouter.WithXTitle("stv CMS"),
 	)
 	return &openRouterClient{client: client}

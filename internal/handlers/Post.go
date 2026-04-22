@@ -11,6 +11,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 )
 
 type postHandler struct {
@@ -20,12 +21,14 @@ type postHandler struct {
 func NewPostHandler(ctx context.Context,
 	redis redis.Client,
 	openRouterClient clients.IOpenRouterClient,
+	db *gorm.DB,
 ) *postHandler {
 	return &postHandler{
 		service: services.NewPostService(
 			ctx,
 			redis,
 			openRouterClient,
+			db,
 		),
 	}
 }

@@ -2,7 +2,6 @@ package repository
 
 import (
 	"errors"
-	"stvCms/internal/config"
 	"stvCms/internal/models"
 
 	"gorm.io/gorm"
@@ -35,10 +34,8 @@ func (pr *postRepository) GetPostsByFilter(filter string) ([]models.Post, error)
 	return posts, nil
 }
 
-func NewPostGormRepository() *postRepository {
-	return &postRepository{
-		db: config.Init(),
-	}
+func NewPostGormRepository(db *gorm.DB) *postRepository {
+	return &postRepository{db: db}
 }
 
 func (pr *postRepository) CreatePost(post models.Post) (string, error) {

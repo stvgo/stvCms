@@ -3,15 +3,14 @@ package clients
 import (
 	"context"
 	"log"
-	"os"
 
 	"github.com/redis/go-redis/v9"
 )
 
-func NewRedisClient(ctx context.Context, addr, password string) *redis.Client {
+func NewRedisClient(ctx context.Context, redisURL, addr, password string) *redis.Client {
 	var rdb *redis.Client
 
-	if redisURL := os.Getenv("REDIS_URL"); redisURL != "" {
+	if redisURL != "" {
 		opt, err := redis.ParseURL(redisURL)
 		if err != nil {
 			log.Fatalf("REDIS_URL inválida: %v", err)
