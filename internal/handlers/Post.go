@@ -145,14 +145,14 @@ func (h *postHandler) GetPostByFilter(c echo.Context) error {
 	return c.JSON(http.StatusOK, responsePost)
 }
 
-func (h *postHandler) GetTextAI(c echo.Context) error {
-	textAI := request.TextAI{}
-	err := c.Bind(&textAI)
+func (h *postHandler) AutoCompleteAI(c echo.Context) error {
+	reqAI := request.AI{}
+	err := c.Bind(&reqAI)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "text_ai is empty"})
 	}
 
-	response, err := h.service.GenTextAI(textAI.TextAI)
+	response, err := h.service.AutoCompleteAI(reqAI)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err})

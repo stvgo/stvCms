@@ -24,7 +24,7 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	postGroup.GET("/image/:filename", postHandler.GetImage)
 	postGroup.DELETE("/delete/:id", postHandler.DeletePostById)
 	postGroup.POST("/getPost/:filter", postHandler.GetPostByFilter)
-	postGroup.POST("/genTextAI", postHandler.GetTextAI)
+	postGroup.POST("/autoCompleteAI", postHandler.AutoCompleteAI)
 
 	authHandler := handlers.NewLoginAndRegisterHandler()
 	authGroup := e.Group("/auth")

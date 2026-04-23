@@ -8,7 +8,7 @@ import (
 )
 
 type IOpenRouterClient interface {
-	GenText(text string) (string, error)
+	GenAI(text string) (string, error)
 }
 
 type openRouterClient struct {
@@ -23,11 +23,11 @@ func NewOpenRouter(apiKey string) IOpenRouterClient {
 	return &openRouterClient{client: client}
 }
 
-func (ro *openRouterClient) GenText(text string) (string, error) {
+func (ro *openRouterClient) GenAI(text string) (string, error) {
 	resp, err := ro.client.CreateChatCompletion(
 		context.Background(),
 		openrouter.ChatCompletionRequest{
-			Model: "openrouter/elephant-alpha",
+			Model: "inclusionai/ling-2.6-flash:free",
 			Messages: []openrouter.ChatCompletionMessage{
 				openrouter.UserMessage(text),
 			},

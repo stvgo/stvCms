@@ -20,6 +20,7 @@ type UpdatePostRequest struct {
 	ContentBlocks []ContentBlock `json:"content_blocks"`
 }
 
-type TextAI struct {
+type AI struct {
 	TextAI string `json:"text_ai"`
+	CodeAI string `json:"code_ai"`
 }

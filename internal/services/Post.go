@@ -36,7 +36,7 @@ type IPostService interface {
 	DeletePostById(id string) (string, error)
 	SaveImage(image multipart.File, handler *multipart.FileHeader) (string, error)
 	GetImage(filename string) ([]byte, error)
-	GenTextAI(text string) (string, error)
+	AutoCompleteAI(reqAI request.AI) (string, error)
 }
 
 type postService struct {
@@ -297,21 +297,35 @@ func (ps *postService) SaveImage(imageFile multipart.File, handler *multipart.Fi
 	return fileName, nil
 }
 
-func (ps *postService) GenTextAI(text string) (string, error) {
-	if text == "" {
-		return "", fmt.Errorf("error al generar el texto")
+func (ps *postService) AutoCompleteAI(reqAI request.AI) (string, error) {
+	if reqAI.TextAI != "" {
+		formatPrompt := "Realiza un formateo a este texto pero separalo por parrafos y que quede con formato html"
+		prePrompt := fmt.Sprintf("Complementa el siguiente texto para crear un post de blog atractivo y bien estructurado."+
+			" El texto debe ser claro, conciso y fácil de entender."+
+			" Asegúrate de incluir una introducción, un desarrollo y una conclusión. El tema del post es: %s. %s", reqAI.TextAI, formatPrompt)
+
+		text, err := ps.openRouterClient.GenAI(prePrompt)
+		if err != nil {
+			slog.Error("error al generar el texto", "error", err)
+			return "", err
+		}
+
+		return text, nil
 	}
+	slog.Info("text_ai is empty")
 
-	formatPrompt := "Realiza un formateo a este texto pero separalo por parrafos y que quede con formato html"
-	prePrompt := fmt.Sprintf("Complementa el siguiente texto para crear un post de blog atractivo y bien estructurado."+
-		" El texto debe ser claro, conciso y fácil de entender."+
-		" Asegúrate de incluir una introducción, un desarrollo y una conclusión. El tema del post es: %s. %s", text, formatPrompt)
+	if reqAI.CodeAI != "" {
+		formatCode := "Genera solo codigo en tipo main.go, no incluyas comentarios"
+		prompt := fmt.Sprintf("Genera el siguiente código con buenas prácticas, moderno y estructurado: %s. %s", reqAI.CodeAI, formatCode)
 
-	textAI, err := ps.openRouterClient.GenText(prePrompt)
-	if err != nil {
-		slog.Error("error al generar el texto", "error", err)
-		return "", err
+		code, err := ps.openRouterClient.GenAI(prompt)
+		if err != nil {
+			slog.Error("error al generar el texto", "error", err)
+		}
+		return code, nil
 	}
+	slog.Info("code_ai is empty")
 
-	return textAI, nil
+	return fmt.Sprintf("No se puede autocompletar AI para Text=null, Code=null "), nil
+
 }
