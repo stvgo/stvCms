@@ -26,6 +26,10 @@ type Config struct {
 	RedisPassword string
 	// AI
 	OpenRouterAPIKey string
+	// Cloudflare R2
+	AccountID       string
+	AccessKeyID     string
+	SecretAccessKey string
 }
 
 func Load() *Config {
@@ -56,5 +60,8 @@ func Load() *Config {
 		RedisAddr:         os.Getenv("REDIS_ADDR"),
 		RedisPassword:     os.Getenv("REDIS_PASSWORD"),
 		OpenRouterAPIKey:  os.Getenv("OPEN_ROUTER_API_KEY"),
+		AccountID:         os.Getenv("ACCOUNT_ID"),
+		AccessKeyID:       os.Getenv("ACCESS_KEY_ID"),
+		SecretAccessKey:   os.Getenv("SECRET_ACCESS_KEY"),
 	}
 }

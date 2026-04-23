@@ -9,6 +9,7 @@ import (
 	"stvCms/internal/rest/request"
 	"stvCms/internal/services"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -18,17 +19,14 @@ type postHandler struct {
 	service services.IPostService
 }
 
-func NewPostHandler(ctx context.Context,
-	redis redis.Client,
-	openRouterClient clients.IOpenRouterClient,
-	db *gorm.DB,
-) *postHandler {
+func NewPostHandler(ctx context.Context, redis redis.Client, openRouterClient clients.IOpenRouterClient, db *gorm.DB, r2 *s3.Client) *postHandler {
 	return &postHandler{
 		service: services.NewPostService(
 			ctx,
 			redis,
 			openRouterClient,
 			db,
+			r2,
 		),
 	}
 }
@@ -36,12 +34,12 @@ func NewPostHandler(ctx context.Context,
 func (h *postHandler) CreatePost(c echo.Context) error {
 	var input request.CreatePostRequest
 	if err := c.Bind(&input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
 	}
 
 	result, err := h.service.CreatePost(input)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusCreated, result)
@@ -50,7 +48,7 @@ func (h *postHandler) CreatePost(c echo.Context) error {
 func (h *postHandler) GetPosts(c echo.Context) error {
 	responsePosts, err := h.service.GetPosts()
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, responsePosts)
@@ -59,12 +57,12 @@ func (h *postHandler) GetPosts(c echo.Context) error {
 func (h *postHandler) UpdatePost(c echo.Context) error {
 	var req request.UpdatePostRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
 	}
 
 	result, err := h.service.UpdatePost(req)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, result)
@@ -75,10 +73,10 @@ func (h *postHandler) DeletePostById(c echo.Context) error {
 
 	_, err := h.service.DeletePostById(id)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
 
-	return c.JSON(http.StatusNoContent, map[string]string{"message": "Deleted"})
+	return c.JSON(http.StatusNoContent, echo.Map{"message": "Deleted"})
 }
 
 func (h *postHandler) GetPostById(c echo.Context) error {
@@ -86,12 +84,12 @@ func (h *postHandler) GetPostById(c echo.Context) error {
 
 	postId, err := strconv.Atoi(id)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid ID"})
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid ID"})
 	}
 
 	responsePost, err := h.service.GetPostById(postId)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, responsePost)
@@ -101,17 +99,17 @@ func (h *postHandler) UploadPostImage(c echo.Context) error {
 
 	file, handler, err := c.Request().FormFile("image")
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Failed to get image from request"})
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "Failed to get image from request"})
 	}
 	defer file.Close()
 
 	filename, err := h.service.SaveImage(file, handler)
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
+	return c.JSON(http.StatusOK, echo.Map{
 		"message":  "Image uploaded successfully",
 		"filename": filename,
 	})
@@ -123,7 +121,7 @@ func (h *postHandler) GetImage(c echo.Context) error {
 	image, err := h.service.GetImage(filename)
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
 
 	c.Response().Header().Set("Content-Type", "image/jpeg")

@@ -21,6 +21,7 @@ import (
 
 	"stvCms/internal/clients"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/disintegration/imaging"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -44,18 +45,20 @@ type postService struct {
 	ctx              context.Context
 	redisClient      *redis.Client
 	openRouterClient clients.IOpenRouterClient
+	r2               *s3.Client
 }
 
 func (ps *postService) GetImage(filename string) ([]byte, error) {
 	return os.ReadFile(filepath.Join("././public/uploads", filename))
 }
 
-func NewPostService(ctx context.Context, redis redis.Client, openRouterClient clients.IOpenRouterClient, db *gorm.DB) *postService {
+func NewPostService(ctx context.Context, redis redis.Client, openRouterClient clients.IOpenRouterClient, db *gorm.DB, r2 *s3.Client) *postService {
 	return &postService{
 		repository:       repository.NewPostGormRepository(db),
 		ctx:              ctx,
 		redisClient:      &redis,
 		openRouterClient: openRouterClient,
+		r2:               r2,
 	}
 }
 
