@@ -1,7 +1,7 @@
 package config
 
 import (
-	"log"
+	"log/slog"
 	"os"
 )
 
@@ -41,7 +41,7 @@ func Load() *Config {
 	sessionSecret := os.Getenv("SESSION_SECRET")
 	if sessionSecret == "" {
 		sessionSecret = "default-secret-key-change-this"
-		log.Println("Warning: SESSION_SECRET not set, using default key")
+		slog.Warn("Warning: SESSION_SECRET not set, using default key")
 	}
 
 	return &Config{
