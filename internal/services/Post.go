@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -13,7 +14,6 @@ import (
 	"io"
 	"log/slog"
 	"mime/multipart"
-	"os"
 	"path/filepath"
 	"strconv"
 	"stvCms/internal/models"
@@ -53,7 +53,20 @@ type postService struct {
 }
 
 func (ps *postService) GetImage(filename string) ([]byte, error) {
-	return os.ReadFile(filepath.Join("././public/uploads", filename))
+	img, err := ps.r2.GetObject(ps.ctx, &s3.GetObjectInput{
+		Bucket: aws.String("stv-cms"),
+		Key:    aws.String(filename),
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer img.Body.Close()
+
+	data, err := io.ReadAll(img.Body)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func NewPostService(ctx context.Context, redis redis.Client, openRouterClient clients.IOpenRouterClient, db *gorm.DB, r2 *s3.Client) *postService {
@@ -286,10 +299,8 @@ func (ps *postService) SaveImage(imageFile multipart.File, handler *multipart.Fi
 	fileName := uuid.New().String() + ext
 
 	imgR2, _, _ := imageToReader(resizedImg)
-	_, err = ps.uploadImageR2("stv-cms", fileName, imgR2)
-	return "", nil
+	return ps.uploadImageR2("stv-cms", fileName, imgR2)
 }
-
 func imageToReader(img image.Image) (io.Reader, int64, error) {
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90}); err != nil {
@@ -298,17 +309,17 @@ func imageToReader(img image.Image) (io.Reader, int64, error) {
 	return &buf, int64(buf.Len()), nil
 }
 
-func (ps *postService) uploadImageR2(bucket, key string, body io.Reader) (*s3.PutObjectOutput, error) {
-	resp, err := ps.r2.PutObject(ps.ctx, &s3.PutObjectInput{
+func (ps *postService) uploadImageR2(bucket, filename string, body io.Reader) (string, error) {
+	_, err := ps.r2.PutObject(ps.ctx, &s3.PutObjectInput{
 		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
+		Key:    aws.String(filename),
 		Body:   body,
 	})
 
 	if err != nil {
-		slog.Error("error al subir imagen a R2", "error", err)
+		return errors.New("error al subir imagen a R2").Error(), err
 	}
-	return resp, err
+	return filename, err
 }
 
 func (ps *postService) AutoCompleteAI(reqAI request.AI) (string, error) {
