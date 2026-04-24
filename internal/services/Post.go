@@ -1,13 +1,16 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"image"
 	_ "image/gif"
+	"image/jpeg"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
 	"log/slog"
 	"mime/multipart"
 	"os"
@@ -21,6 +24,7 @@ import (
 
 	"stvCms/internal/clients"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/disintegration/imaging"
 	"github.com/google/uuid"
@@ -281,23 +285,30 @@ func (ps *postService) SaveImage(imageFile multipart.File, handler *multipart.Fi
 	}
 	fileName := uuid.New().String() + ext
 
-	uploadDir := "././public/uploads"
-	err = os.MkdirAll(uploadDir, os.ModePerm)
-	if err != nil {
-		slog.Error("error al crear directorio", "error", err)
-		return "", fmt.Errorf("error al crear directorio: %w", err)
+	imgR2, _, _ := imageToReader(resizedImg)
+	_, err = ps.uploadImageR2("stv-cms", fileName, imgR2)
+	return "", nil
+}
+
+func imageToReader(img image.Image) (io.Reader, int64, error) {
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90}); err != nil {
+		return nil, 0, err
 	}
+	return &buf, int64(buf.Len()), nil
+}
 
-	outputPath := filepath.Join(uploadDir, fileName)
-	err = imaging.Save(resizedImg, outputPath)
+func (ps *postService) uploadImageR2(bucket, key string, body io.Reader) (*s3.PutObjectOutput, error) {
+	resp, err := ps.r2.PutObject(ps.ctx, &s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+		Body:   body,
+	})
+
 	if err != nil {
-		slog.Error("error al guardar imagen", "error", err)
-		return "", fmt.Errorf("error al guardar imagen: %w", err)
+		slog.Error("error al subir imagen a R2", "error", err)
 	}
-
-	slog.Info("imagen guardada correctamente", "filename", fileName, "width", resizedImg.Bounds().Dx(), "height", resizedImg.Bounds().Dy())
-
-	return fileName, nil
+	return resp, err
 }
 
 func (ps *postService) AutoCompleteAI(reqAI request.AI) (string, error) {
