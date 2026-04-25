@@ -10,6 +10,7 @@ import (
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/jpeg"
+	"image/png"
 	_ "image/png"
 	"io"
 	"log/slog"
@@ -298,15 +299,25 @@ func (ps *postService) SaveImage(imageFile multipart.File, handler *multipart.Fi
 	}
 	fileName := uuid.New().String() + ext
 
-	imgR2, _, _ := imageToReader(resizedImg)
+	imgR2, _, _ := imageToReader(format, resizedImg)
 	return ps.uploadImageR2("stv-cms", fileName, imgR2)
 }
-func imageToReader(img image.Image) (io.Reader, int64, error) {
+func imageToReader(format string, img image.Image) (io.Reader, int64, error) {
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90}); err != nil {
-		return nil, 0, err
+
+	if format == "jpeg" {
+		if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90}); err != nil {
+			return nil, 0, err
+		}
+		return &buf, int64(buf.Len()), nil
+	} else if format == "png" {
+		if err := png.Encode(&buf, img); err != nil {
+			return nil, 0, err
+		}
+		return &buf, int64(buf.Len()), nil
 	}
-	return &buf, int64(buf.Len()), nil
+
+	return nil, 0, fmt.Errorf("format %s not supported", format)
 }
 
 func (ps *postService) uploadImageR2(bucket, filename string, body io.Reader) (string, error) {
