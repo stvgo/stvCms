@@ -29,7 +29,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/disintegration/imaging"
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -48,9 +47,9 @@ type IPostService interface {
 type postService struct {
 	repository       repository.IPostRepository
 	ctx              context.Context
-	redisClient      *redis.Client
+	redisClient      clients.IRedisClient
 	openRouterClient clients.IOpenRouterClient
-	r2               *s3.Client
+	r2               clients.IR2Client
 }
 
 func (ps *postService) GetImage(filename string) ([]byte, error) {
@@ -70,11 +69,11 @@ func (ps *postService) GetImage(filename string) ([]byte, error) {
 	return data, nil
 }
 
-func NewPostService(ctx context.Context, redis redis.Client, openRouterClient clients.IOpenRouterClient, db *gorm.DB, r2 *s3.Client) *postService {
+func NewPostService(ctx context.Context, redisClient clients.IRedisClient, openRouterClient clients.IOpenRouterClient, db *gorm.DB, r2 clients.IR2Client) *postService {
 	return &postService{
 		repository:       repository.NewPostGormRepository(db),
 		ctx:              ctx,
-		redisClient:      &redis,
+		redisClient:      redisClient,
 		openRouterClient: openRouterClient,
 		r2:               r2,
 	}
@@ -102,7 +101,7 @@ func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error)
 		return "No se pudo crear el post", err
 	}
 
-	_ = ps.redisClient.Del(ps.ctx, "posts:all").Err()
+	_ = ps.redisClient.Del(ps.ctx, "posts:all")
 
 	return modelPost, nil
 }
@@ -111,7 +110,7 @@ func (ps *postService) GetPosts() ([]response.PostResponse, error) {
 	posts := []response.PostResponse{}
 	var modelPosts []models.Post
 
-	val, err := ps.redisClient.Get(ps.ctx, "posts:all").Result()
+	val, err := ps.redisClient.Get(ps.ctx, "posts:all")
 	if err == nil && val != "" {
 		if err := json.Unmarshal([]byte(val), &modelPosts); err != nil {
 			return posts, nil
@@ -123,7 +122,7 @@ func (ps *postService) GetPosts() ([]response.PostResponse, error) {
 		}
 		if len(modelPosts) > 0 {
 			data, _ := json.Marshal(modelPosts)
-			_ = ps.redisClient.Set(ps.ctx, "posts:all", string(data), 24*time.Hour).Err()
+			_ = ps.redisClient.Set(ps.ctx, "posts:all", string(data), 24*time.Hour)
 		}
 	}
 
@@ -247,7 +246,7 @@ func (ps *postService) UpdatePost(req request.UpdatePostRequest) (string, error)
 		return "", err
 	}
 
-	_ = ps.redisClient.Del(ps.ctx, "posts:all").Err()
+	_ = ps.redisClient.Del(ps.ctx, "posts:all")
 
 	return result, nil
 }
@@ -261,7 +260,7 @@ func (ps *postService) DeletePostById(id string) (string, error) {
 		return "", fmt.Errorf("Error al borrar el post")
 	}
 
-	_ = ps.redisClient.Del(ps.ctx, "posts:all").Err()
+	_ = ps.redisClient.Del(ps.ctx, "posts:all")
 
 	return "Post borrado", nil
 }

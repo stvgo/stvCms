@@ -9,9 +9,7 @@ import (
 	"stvCms/internal/rest/request"
 	"stvCms/internal/services"
 
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/labstack/echo/v4"
-	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -19,11 +17,11 @@ type postHandler struct {
 	service services.IPostService
 }
 
-func NewPostHandler(ctx context.Context, redis redis.Client, openRouterClient clients.IOpenRouterClient, db *gorm.DB, r2 *s3.Client) *postHandler {
+func NewPostHandler(ctx context.Context, redisClient clients.IRedisClient, openRouterClient clients.IOpenRouterClient, db *gorm.DB, r2 clients.IR2Client) *postHandler {
 	return &postHandler{
 		service: services.NewPostService(
 			ctx,
-			redis,
+			redisClient,
 			openRouterClient,
 			db,
 			r2,

@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test & Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Build
+        run: go build ./...
+
+      - name: Run all tests
+        run: go test ./internal/... -v -count=1 2>&1 | tee test_output.txt
+
+      - name: Check coverage (services + repository ≥ 90%)
+        run: |
+          go test ./internal/services/... ./internal/repository/... \
+            -coverprofile=coverage.out -covermode=atomic
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+          echo "Coverage: ${COVERAGE}%"
+          awk -v cov="$COVERAGE" 'BEGIN {
+            if (cov + 0 < 90) {
+              printf "Coverage %.1f%% is below the 90%% threshold\n", cov+0
+              exit 1
+            }
+            printf "Coverage %.1f%% meets the 90%% threshold\n", cov+0
+          }'
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.out

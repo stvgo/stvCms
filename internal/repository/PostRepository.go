@@ -70,12 +70,12 @@ func (pr *postRepository) UpdatePost(id uint, post models.Post) (string, error) 
 
 func (pr *postRepository) GetPostById(id uint) (models.Post, error) {
 	var post models.Post
-	err := pr.db.First(&post, id).Error
+	if err := pr.db.First(&post, id).Error; err != nil {
+		return post, err
+	}
 
 	contentBlocks, err := pr.GetContentBlocksById(id)
-
 	post.ContentBlocks = contentBlocks
-
 	return post, err
 }
 

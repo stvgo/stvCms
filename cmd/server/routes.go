@@ -11,10 +11,10 @@ import (
 )
 
 func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.Context) {
-	redisClient := clients.NewRedisClient(ctx, cfg.RedisURL, cfg.RedisAddr, cfg.RedisPassword)
+	redisClient := clients.NewRedisWrapper(clients.NewRedisClient(ctx, cfg.RedisURL, cfg.RedisAddr, cfg.RedisPassword))
 	openRouterClient := clients.NewOpenRouter(cfg.OpenRouterAPIKey)
 	cloudflareR2 := clients.NewR2Client(ctx, cfg.AccountID, cfg.AccessKeyID, cfg.SecretAccessKey)
-	postHandler := handlers.NewPostHandler(ctx, *redisClient, openRouterClient, db, cloudflareR2)
+	postHandler := handlers.NewPostHandler(ctx, redisClient, openRouterClient, db, cloudflareR2)
 
 	postGroup := e.Group("/post")
 	postGroup.POST("/create", postHandler.CreatePost)
