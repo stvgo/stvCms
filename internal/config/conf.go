@@ -9,6 +9,7 @@ type Config struct {
 	// Server
 	Port          string
 	SessionSecret string
+	AuthSecret    string
 	// OAuth
 	ClientID          string
 	ClientSecret      string
@@ -44,9 +45,16 @@ func Load() *Config {
 		slog.Warn("Warning: SESSION_SECRET not set, using default key")
 	}
 
+	authSecret := os.Getenv("AUTH_SECRET")
+	if authSecret == "" {
+		authSecret = "default-auth-secret-key-change-this-min-32"
+		slog.Warn("Warning: AUTH_SECRET not set, using default key")
+	}
+
 	return &Config{
 		Port:              port,
 		SessionSecret:     sessionSecret,
+		AuthSecret:        authSecret,
 		ClientID:          os.Getenv("CLIENT_ID"),
 		ClientSecret:      os.Getenv("CLIENT_SECRET"),
 		ClientCallbackURL: os.Getenv("CLIENT_CALLBACK_URL"),
