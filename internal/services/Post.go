@@ -17,11 +17,12 @@ import (
 	"mime/multipart"
 	"path/filepath"
 	"strconv"
+	"time"
+
 	"stvCms/internal/models"
 	"stvCms/internal/repository"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/rest/response"
-	"time"
 
 	"stvCms/internal/clients"
 
@@ -35,10 +36,10 @@ import (
 type IPostService interface {
 	CreatePost(req request.CreatePostRequest) (string, error)
 	GetPosts() ([]response.PostResponse, error)
-	GetPostById(id int) (response.PostResponse, error)
+	GetPostByID(id int) (response.PostResponse, error)
 	GetPostByFilter(filter string) ([]response.PostResponse, error)
 	UpdatePost(req request.UpdatePostRequest) (string, error)
-	DeletePostById(id string) (string, error)
+	DeletePostByID(id string) (string, error)
 	SaveImage(image multipart.File, handler *multipart.FileHeader) (string, error)
 	GetImage(filename string) ([]byte, error)
 	AutoCompleteAI(reqAI request.AI) (string, error)
@@ -139,7 +140,7 @@ func (ps *postService) GetPosts() ([]response.PostResponse, error) {
 		}
 
 		data := response.PostResponse{
-			Id:            post.Model.ID,
+			Id:            post.ID,
 			CreatedAt:     post.CreatedAt,
 			UpdatedAt:     post.UpdatedAt,
 			Title:         post.Title,
@@ -153,8 +154,7 @@ func (ps *postService) GetPosts() ([]response.PostResponse, error) {
 	return posts, nil
 }
 
-func (ps *postService) GetPostById(id int) (response.PostResponse, error) {
-
+func (ps *postService) GetPostByID(id int) (response.PostResponse, error) {
 	post, err := ps.repository.GetPostById(uint(id))
 	if err != nil {
 		return response.PostResponse{}, err
@@ -241,7 +241,6 @@ func (ps *postService) UpdatePost(req request.UpdatePostRequest) (string, error)
 	}
 
 	result, err := ps.repository.UpdatePost(req.Id, postModel)
-
 	if err != nil {
 		return "", err
 	}
@@ -251,7 +250,7 @@ func (ps *postService) UpdatePost(req request.UpdatePostRequest) (string, error)
 	return result, nil
 }
 
-func (ps *postService) DeletePostById(id string) (string, error) {
+func (ps *postService) DeletePostByID(id string) (string, error) {
 	postId, _ := strconv.Atoi(id)
 
 	ok := ps.repository.DeletePostById(postId)
@@ -300,6 +299,7 @@ func (ps *postService) SaveImage(imageFile multipart.File, handler *multipart.Fi
 
 	return ps.uploadImageR2("stv-cms", fileName, imageToReader(format, resizedImg))
 }
+
 func imageToReader(format string, img image.Image) io.Reader {
 	var buf bytes.Buffer
 
@@ -324,7 +324,6 @@ func (ps *postService) uploadImageR2(bucket, filename string, body io.Reader) (s
 		Key:    aws.String(filename),
 		Body:   body,
 	})
-
 	if err != nil {
 		return errors.New("error al subir imagen a R2").Error(), err
 	}
@@ -361,5 +360,4 @@ func (ps *postService) AutoCompleteAI(reqAI request.AI) (string, error) {
 	slog.Info("code_ai is empty")
 
 	return fmt.Sprintf("No se puede autocompletar AI para Text=null, Code=null "), nil
-
 }

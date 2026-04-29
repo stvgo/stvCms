@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+
 	"stvCms/internal/config"
 
 	"github.com/gorilla/sessions"
@@ -44,7 +45,7 @@ func initAuth(cfg *config.Config) {
 
 func startServer(cfg *config.Config, db *gorm.DB) {
 	e := echo.New()
-	e.Use(middleware.Logger())
+	e.Use(middleware.RequestLogger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"http://localhost:3000"},

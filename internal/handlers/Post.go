@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+
 	"stvCms/internal/clients"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/services"
@@ -69,7 +70,7 @@ func (h *postHandler) UpdatePost(c echo.Context) error {
 func (h *postHandler) DeletePostById(c echo.Context) error {
 	id := c.Param("id")
 
-	_, err := h.service.DeletePostById(id)
+	_, err := h.service.DeletePostByID(id)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
@@ -85,7 +86,7 @@ func (h *postHandler) GetPostById(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid ID"})
 	}
 
-	responsePost, err := h.service.GetPostById(postId)
+	responsePost, err := h.service.GetPostByID(postId)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
@@ -94,7 +95,6 @@ func (h *postHandler) GetPostById(c echo.Context) error {
 }
 
 func (h *postHandler) UploadPostImage(c echo.Context) error {
-
 	file, handler, err := c.Request().FormFile("image")
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "Failed to get image from request"})
@@ -102,7 +102,6 @@ func (h *postHandler) UploadPostImage(c echo.Context) error {
 	defer file.Close()
 
 	filename, err := h.service.SaveImage(file, handler)
-
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
@@ -117,7 +116,6 @@ func (h *postHandler) GetImage(c echo.Context) error {
 	filename := c.Param("filename")
 
 	image, err := h.service.GetImage(filename)
-
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
@@ -149,11 +147,9 @@ func (h *postHandler) AutoCompleteAI(c echo.Context) error {
 	}
 
 	response, err := h.service.AutoCompleteAI(reqAI)
-
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err})
 	}
 
 	return c.JSON(http.StatusOK, response)
-
 }
