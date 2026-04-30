@@ -19,7 +19,7 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	cloudflareR2 := clients.NewR2Client(ctx, cfg.AccountID, cfg.AccessKeyID, cfg.SecretAccessKey)
 	postHandler := handlers.NewPostHandler(ctx, redisClient, openRouterClient, db, cloudflareR2)
 
-	jwtMiddleware := middleware.JWTMiddleware(cfg.AuthSecret)
+	jwtMiddleware := middleware.AuthMiddleware()
 
 	postGroup := e.Group("/post")
 	postGroup.Use(jwtMiddleware)
@@ -38,7 +38,7 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	authHandler := handlers.NewAuthHandler(authService)
 
 	authGroup := e.Group("/auth")
-	authGroup.POST("/sync", authHandler.SyncUser)
+	authGroup.POST("/google", authHandler.GoogleLogin)
 	authGroup.GET("/me", authHandler.Me, jwtMiddleware)
 
 	loginHandler := handlers.NewLoginAndRegisterHandler()

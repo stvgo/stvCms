@@ -3,67 +3,75 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
 
-func parseCookies(cookieHeader string) map[string]string {
-	cookies := make(map[string]string)
-	for _, part := range strings.Split(cookieHeader, ";") {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-		kv := strings.SplitN(part, "=", 2)
-		if len(kv) == 2 {
-			cookies[kv[0]] = kv[1]
-		}
-	}
-	return cookies
+var secretKey = []byte(os.Getenv("AUTH_SECRET"))
+
+type Claims struct {
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	jwt.RegisteredClaims
 }
 
-func VerifyAuthToken(cookieHeader, secret string) (jwt.MapClaims, error) {
-	cookies := parseCookies(cookieHeader)
-	tokenString, ok := cookies["authjs.session-token"]
-	if !ok || tokenString == "" {
-		return nil, fmt.Errorf("missing session token")
+func GenerateToken(userID, email string) (string, error) {
+	claims := Claims{
+		UserID: userID,
+		Email:  email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "stv-cms",
+		},
 	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(secretKey)
+}
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+func ValidateToken(tokenStr string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(secret), nil
-	}, jwt.WithValidMethods([]string{"HS256"}))
-
+		return secretKey, nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		return claims, nil
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token")
 	}
 
-	return nil, fmt.Errorf("invalid token claims")
+	return claims, nil
 }
 
-func JWTMiddleware(authSecret string) echo.MiddlewareFunc {
+func AuthMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			cookieHeader := c.Request().Header.Get("Cookie")
-			claims, err := VerifyAuthToken(cookieHeader, authSecret)
+			authHeader := c.Request().Header.Get("Authorization")
+			if authHeader == "" {
+				return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Authorization header is required"})
+			}
+
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+				return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Authorization header format must be Bearer {token}"})
+			}
+
+			claims, err := ValidateToken(parts[1])
 			if err != nil {
-				return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Unauthorized"})
+				return c.JSON(http.StatusUnauthorized, echo.Map{"error": err.Error()})
 			}
 
-			email, ok := claims["email"].(string)
-			if !ok || email == "" {
-				return c.JSON(http.StatusUnauthorized, echo.Map{"error": "Unauthorized"})
-			}
-
-			c.Set("userEmail", email)
+			c.Set("user_id", claims.UserID)
+			c.Set("email", claims.Email)
 			return next(c)
 		}
 	}
