@@ -209,7 +209,7 @@ func TestGetPostById(t *testing.T) {
 			svc, repo, _, _, _ := newTestService(ctrl)
 			tt.setupMocks(repo)
 
-			result, err := svc.GetPostById(tt.id)
+			result, err := svc.GetPostByID(tt.id)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -383,7 +383,7 @@ func TestDeletePostById(t *testing.T) {
 			svc, repo, redis, _, _ := newTestService(ctrl)
 			tt.setupMocks(repo, redis)
 
-			_, err := svc.DeletePostById(tt.id)
+			_, err := svc.DeletePostByID(tt.id)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
