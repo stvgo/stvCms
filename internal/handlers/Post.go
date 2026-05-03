@@ -30,11 +30,20 @@ func NewPostHandler(ctx context.Context, redisClient clients.IRedisClient, openR
 	}
 }
 
+func getUserName(c echo.Context) string {
+	if name, ok := c.Get("name").(string); ok {
+		return name
+	}
+	return ""
+}
+
 func (h *postHandler) CreatePost(c echo.Context) error {
 	var input request.CreatePostRequest
 	if err := c.Bind(&input); err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
 	}
+
+	input.UserID = getUserName(c)
 
 	result, err := h.service.CreatePost(input)
 	if err != nil {
@@ -45,7 +54,9 @@ func (h *postHandler) CreatePost(c echo.Context) error {
 }
 
 func (h *postHandler) GetPosts(c echo.Context) error {
-	responsePosts, err := h.service.GetPosts()
+	userID := getUserName(c)
+
+	responsePosts, err := h.service.GetPosts(userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
@@ -86,7 +97,9 @@ func (h *postHandler) GetPostById(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid ID"})
 	}
 
-	responsePost, err := h.service.GetPostByID(postId)
+	userID := getUserName(c)
+
+	responsePost, err := h.service.GetPostByID(postId, userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
@@ -131,7 +144,9 @@ func (h *postHandler) GetPostByFilter(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "filter is empty"})
 	}
 
-	responsePost, err := h.service.GetPostByFilter(filter)
+	userID := getUserName(c)
+
+	responsePost, err := h.service.GetPostByFilter(filter, userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err})
 	}

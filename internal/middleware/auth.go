@@ -16,13 +16,15 @@ var secretKey = []byte(os.Getenv("AUTH_SECRET"))
 type Claims struct {
 	UserID string `json:"user_id"`
 	Email  string `json:"email"`
+	Name   string `json:"name"`
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID, email string) (string, error) {
+func GenerateToken(userID, email, name string) (string, error) {
 	claims := Claims{
 		UserID: userID,
 		Email:  email,
+		Name:   name,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -80,6 +82,7 @@ func AuthMiddleware() echo.MiddlewareFunc {
 
 				c.Set("user_id", claims.UserID)
 				c.Set("email", claims.Email)
+				c.Set("name", claims.Name)
 				return next(c)
 			}
 
@@ -88,6 +91,7 @@ func AuthMiddleware() echo.MiddlewareFunc {
 			if localUserID == "123" {
 				c.Set("user_id", "123")
 				c.Set("email", "test@local.dev")
+				c.Set("name", "Local User")
 				return next(c)
 			}
 

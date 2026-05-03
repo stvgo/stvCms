@@ -7,7 +7,7 @@ type Post struct {
 	Title         string
 	UserID        string
 	ContentBlocks []ContentBlock
-	IsVisible     bool `gorm:"type:boolean"`
+	Status        string `gorm:"type:varchar(20);default:'public'"`
 }
 
 type ContentBlock struct {

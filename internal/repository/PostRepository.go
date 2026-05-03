@@ -9,10 +9,10 @@ import (
 
 type IPostRepository interface {
 	CreatePost(post models.Post) (string, error)
-	GetPosts() ([]models.Post, error)
+	GetPosts(userID string) ([]models.Post, error)
 	UpdatePost(id uint, post models.Post) (string, error)
-	GetPostById(id uint) (models.Post, error)
-	GetPostsByFilter(filter string) ([]models.Post, error)
+	GetPostById(id uint, userID string) (models.Post, error)
+	GetPostsByFilter(filter string, userID string) ([]models.Post, error)
 	DeletePostById(id int) bool
 	ExistsPost(id int) bool
 }
@@ -21,12 +21,12 @@ type postRepository struct {
 	db *gorm.DB
 }
 
-func (pr *postRepository) GetPostsByFilter(filter string) ([]models.Post, error) {
+func (pr *postRepository) GetPostsByFilter(filter string, userID string) ([]models.Post, error) {
 	var posts []models.Post
 	err := pr.db.Preload("ContentBlocks").
-		Where("title LIKE ?", "%"+filter+"%").
-		Or("user_id LIKE ?", "%"+filter+"%").
-		Or("id IN (SELECT post_id FROM content_blocks WHERE content LIKE ?)", "%"+filter+"%").
+		Where("status = ? OR user_id = ?", "public", userID).
+		Where("(title LIKE ? OR user_id LIKE ? OR id IN (SELECT post_id FROM content_blocks WHERE content LIKE ?))",
+			"%"+filter+"%", "%"+filter+"%", "%"+filter+"%").
 		Find(&posts).Error
 	if err != nil {
 		return posts, err
@@ -46,9 +46,11 @@ func (pr *postRepository) CreatePost(post models.Post) (string, error) {
 	return "Post creado", nil
 }
 
-func (pr *postRepository) GetPosts() ([]models.Post, error) {
+func (pr *postRepository) GetPosts(userID string) ([]models.Post, error) {
 	var posts []models.Post
-	err := pr.db.Preload("ContentBlocks").Find(&posts).Error
+	err := pr.db.Preload("ContentBlocks").
+		Where("status = ? OR user_id = ?", "public", userID).
+		Find(&posts).Error
 	if err != nil {
 		return posts, err
 	}
@@ -68,9 +70,9 @@ func (pr *postRepository) UpdatePost(id uint, post models.Post) (string, error) 
 	return "Post actualizado", nil
 }
 
-func (pr *postRepository) GetPostById(id uint) (models.Post, error) {
+func (pr *postRepository) GetPostById(id uint, userID string) (models.Post, error) {
 	var post models.Post
-	if err := pr.db.First(&post, id).Error; err != nil {
+	if err := pr.db.Where("id = ? AND (status = ? OR user_id = ?)", id, "public", userID).First(&post).Error; err != nil {
 		return post, err
 	}
 

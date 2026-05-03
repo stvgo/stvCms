@@ -84,48 +84,48 @@ func (mr *MockIPostRepositoryMockRecorder) ExistsPost(id any) *gomock.Call {
 }
 
 // GetPostById mocks base method.
-func (m *MockIPostRepository) GetPostById(id uint) (models.Post, error) {
+func (m *MockIPostRepository) GetPostById(id uint, userID string) (models.Post, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPostById", id)
+	ret := m.ctrl.Call(m, "GetPostById", id, userID)
 	ret0, _ := ret[0].(models.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPostById indicates an expected call of GetPostById.
-func (mr *MockIPostRepositoryMockRecorder) GetPostById(id any) *gomock.Call {
+func (mr *MockIPostRepositoryMockRecorder) GetPostById(id, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostById", reflect.TypeOf((*MockIPostRepository)(nil).GetPostById), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostById", reflect.TypeOf((*MockIPostRepository)(nil).GetPostById), id, userID)
 }
 
 // GetPosts mocks base method.
-func (m *MockIPostRepository) GetPosts() ([]models.Post, error) {
+func (m *MockIPostRepository) GetPosts(userID string) ([]models.Post, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPosts")
+	ret := m.ctrl.Call(m, "GetPosts", userID)
 	ret0, _ := ret[0].([]models.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPosts indicates an expected call of GetPosts.
-func (mr *MockIPostRepositoryMockRecorder) GetPosts() *gomock.Call {
+func (mr *MockIPostRepositoryMockRecorder) GetPosts(userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPosts", reflect.TypeOf((*MockIPostRepository)(nil).GetPosts))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPosts", reflect.TypeOf((*MockIPostRepository)(nil).GetPosts), userID)
 }
 
 // GetPostsByFilter mocks base method.
-func (m *MockIPostRepository) GetPostsByFilter(filter string) ([]models.Post, error) {
+func (m *MockIPostRepository) GetPostsByFilter(filter string, userID string) ([]models.Post, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPostsByFilter", filter)
+	ret := m.ctrl.Call(m, "GetPostsByFilter", filter, userID)
 	ret0, _ := ret[0].([]models.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPostsByFilter indicates an expected call of GetPostsByFilter.
-func (mr *MockIPostRepositoryMockRecorder) GetPostsByFilter(filter any) *gomock.Call {
+func (mr *MockIPostRepositoryMockRecorder) GetPostsByFilter(filter, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostsByFilter", reflect.TypeOf((*MockIPostRepository)(nil).GetPostsByFilter), filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostsByFilter", reflect.TypeOf((*MockIPostRepository)(nil).GetPostsByFilter), filter, userID)
 }
 
 // UpdatePost mocks base method.

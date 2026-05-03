@@ -65,7 +65,7 @@ func (h *LoginAndRegisterHandler) CallbackHandler(c echo.Context) error {
 	}
 
 	// Generate JWT and set auth cookie
-	token, err := middleware.GenerateToken(fmt.Sprintf("%d", dbUser.ID), dbUser.Email)
+	token, err := middleware.GenerateToken(fmt.Sprintf("%d", dbUser.ID), dbUser.Email, dbUser.Name)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "Error generating token")
 	}

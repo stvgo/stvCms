@@ -9,7 +9,7 @@ type PostResponse struct {
 	Title         string                 `json:"title"`
 	UserID        string                 `json:"user_id"`
 	ContentBlocks []ContentBlockResponse `json:"content_blocks"`
-	IsVisible     bool                   `json:"is_visible"`
+	Status        string                 `json:"status"`
 }
 
 type ContentBlockResponse struct {

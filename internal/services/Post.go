@@ -3,7 +3,6 @@ package services
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -17,12 +16,12 @@ import (
 	"mime/multipart"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"stvCms/internal/models"
 	"stvCms/internal/repository"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/rest/response"
+	"stvCms/internal/services/enums"
 
 	"stvCms/internal/clients"
 
@@ -35,9 +34,9 @@ import (
 
 type IPostService interface {
 	CreatePost(req request.CreatePostRequest) (string, error)
-	GetPosts() ([]response.PostResponse, error)
-	GetPostByID(id int) (response.PostResponse, error)
-	GetPostByFilter(filter string) ([]response.PostResponse, error)
+	GetPosts(userID string) ([]response.PostResponse, error)
+	GetPostByID(id int, userID string) (response.PostResponse, error)
+	GetPostByFilter(filter string, userID string) ([]response.PostResponse, error)
 	UpdatePost(req request.UpdatePostRequest) (string, error)
 	DeletePostByID(id string) (string, error)
 	SaveImage(image multipart.File, handler *multipart.FileHeader) (string, error)
@@ -81,10 +80,15 @@ func NewPostService(ctx context.Context, redisClient clients.IRedisClient, openR
 }
 
 func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error) {
+	status := req.Status
+	if status == "" {
+		status = enums.PostStatusPublic
+	}
+
 	post := models.Post{
-		Title:     req.Title,
-		UserID:    req.UserID,
-		IsVisible: req.IsVisible,
+		Title:  req.Title,
+		UserID: req.UserID,
+		Status: status,
 	}
 
 	for _, block := range req.ContentBlocks {
@@ -102,29 +106,14 @@ func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error)
 		return "No se pudo crear el post", err
 	}
 
-	_ = ps.redisClient.Del(ps.ctx, "posts:all")
-
 	return modelPost, nil
 }
 
-func (ps *postService) GetPosts() ([]response.PostResponse, error) {
+func (ps *postService) GetPosts(userID string) ([]response.PostResponse, error) {
 	posts := []response.PostResponse{}
-	var modelPosts []models.Post
-
-	val, err := ps.redisClient.Get(ps.ctx, "posts:all")
-	if err == nil && val != "" {
-		if err := json.Unmarshal([]byte(val), &modelPosts); err != nil {
-			return posts, nil
-		}
-	} else {
-		modelPosts, err = ps.repository.GetPosts()
-		if err != nil {
-			return posts, err
-		}
-		if len(modelPosts) > 0 {
-			data, _ := json.Marshal(modelPosts)
-			_ = ps.redisClient.Set(ps.ctx, "posts:all", string(data), 24*time.Hour)
-		}
+	modelPosts, err := ps.repository.GetPosts(userID)
+	if err != nil {
+		return posts, err
 	}
 
 	for _, post := range modelPosts {
@@ -145,7 +134,7 @@ func (ps *postService) GetPosts() ([]response.PostResponse, error) {
 			UpdatedAt:     post.UpdatedAt,
 			Title:         post.Title,
 			UserID:        post.UserID,
-			IsVisible:     post.IsVisible,
+			Status:        post.Status,
 			ContentBlocks: contentBlocks,
 		}
 		posts = append(posts, data)
@@ -154,8 +143,8 @@ func (ps *postService) GetPosts() ([]response.PostResponse, error) {
 	return posts, nil
 }
 
-func (ps *postService) GetPostByID(id int) (response.PostResponse, error) {
-	post, err := ps.repository.GetPostById(uint(id))
+func (ps *postService) GetPostByID(id int, userID string) (response.PostResponse, error) {
+	post, err := ps.repository.GetPostById(uint(id), userID)
 	if err != nil {
 		return response.PostResponse{}, err
 	}
@@ -177,15 +166,15 @@ func (ps *postService) GetPostByID(id int) (response.PostResponse, error) {
 		UpdatedAt:     post.UpdatedAt,
 		Title:         post.Title,
 		UserID:        post.UserID,
-		IsVisible:     post.IsVisible,
+		Status:        post.Status,
 		ContentBlocks: contentBlocks,
 	}
 
 	return postResponse, nil
 }
 
-func (ps *postService) GetPostByFilter(filter string) ([]response.PostResponse, error) {
-	modelPosts, err := ps.repository.GetPostsByFilter(filter)
+func (ps *postService) GetPostByFilter(filter string, userID string) ([]response.PostResponse, error) {
+	modelPosts, err := ps.repository.GetPostsByFilter(filter, userID)
 	if err != nil {
 		return []response.PostResponse{}, err
 	}
@@ -210,7 +199,7 @@ func (ps *postService) GetPostByFilter(filter string) ([]response.PostResponse, 
 			UpdatedAt:     post.UpdatedAt,
 			Title:         post.Title,
 			UserID:        post.UserID,
-			IsVisible:     post.IsVisible,
+			Status:        post.Status,
 			ContentBlocks: contentBlocks,
 		}
 		posts = append(posts, data)
@@ -223,6 +212,14 @@ func (ps *postService) UpdatePost(req request.UpdatePostRequest) (string, error)
 	ok := ps.repository.ExistsPost(int(req.Id))
 	if !ok {
 		return "", gorm.ErrRecordNotFound
+	}
+
+	status := req.Status
+	if status != "" {
+		validStatus := status == enums.PostStatusPublic || status == enums.PostStatusPrivate
+		if !validStatus {
+			return "", fmt.Errorf("status invalido: %s", status)
+		}
 	}
 
 	var contentBlocks []models.ContentBlock
@@ -240,12 +237,14 @@ func (ps *postService) UpdatePost(req request.UpdatePostRequest) (string, error)
 		ContentBlocks: contentBlocks,
 	}
 
+	if status != "" {
+		postModel.Status = status
+	}
+
 	result, err := ps.repository.UpdatePost(req.Id, postModel)
 	if err != nil {
 		return "", err
 	}
-
-	_ = ps.redisClient.Del(ps.ctx, "posts:all")
 
 	return result, nil
 }
@@ -258,8 +257,6 @@ func (ps *postService) DeletePostByID(id string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("Error al borrar el post")
 	}
-
-	_ = ps.redisClient.Del(ps.ctx, "posts:all")
 
 	return "Post borrado", nil
 }

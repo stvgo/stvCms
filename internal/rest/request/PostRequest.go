@@ -2,9 +2,9 @@ package request
 
 type CreatePostRequest struct {
 	Title         string         `json:"title" binding:"required"`
-	UserID        string         `json:"user_id" binding:"required"`
+	UserID        string         `json:"user_id"`
 	ContentBlocks []ContentBlock `json:"content_blocks"`
-	IsVisible     bool           `json:"is_visible" default:"true"`
+	Status        string         `json:"status"`
 }
 
 type ContentBlock struct {
@@ -18,6 +18,7 @@ type UpdatePostRequest struct {
 	Id            uint           `json:"id" binding:"required"`
 	Title         string         `json:"title"`
 	ContentBlocks []ContentBlock `json:"content_blocks"`
+	Status        string         `json:"status"`
 }
 
 type AI struct {

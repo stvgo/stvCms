@@ -3,7 +3,6 @@ package services
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"image"
 	"image/color"
@@ -12,11 +11,11 @@ import (
 	"io"
 	"mime/multipart"
 	"testing"
-	"time"
 
 	"stvCms/internal/mocks"
 	"stvCms/internal/models"
 	"stvCms/internal/rest/request"
+	"stvCms/internal/services/enums"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"
@@ -47,7 +46,7 @@ func TestCreatePost(t *testing.T) {
 	tests := []struct {
 		name        string
 		req         request.CreatePostRequest
-		setupMocks  func(*mocks.MockIPostRepository, *mocks.MockIRedisClient)
+		setupMocks  func(*mocks.MockIPostRepository)
 		wantErr     bool
 		wantContain string
 	}{
@@ -60,9 +59,21 @@ func TestCreatePost(t *testing.T) {
 					{Type: "text", Order: 1, Content: "Hello"},
 				},
 			},
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
+			setupMocks: func(repo *mocks.MockIPostRepository) {
 				repo.EXPECT().CreatePost(gomock.Any()).Return("Post creado", nil)
-				redis.EXPECT().Del(gomock.Any(), "posts:all").Return(nil)
+			},
+			wantErr:     false,
+			wantContain: "Post creado",
+		},
+		{
+			name: "éxito con status privado",
+			req: request.CreatePostRequest{
+				Title:  "Private Post",
+				UserID: "user1",
+				Status: enums.PostStatusPrivate,
+			},
+			setupMocks: func(repo *mocks.MockIPostRepository) {
+				repo.EXPECT().CreatePost(gomock.Any()).Return("Post creado", nil)
 			},
 			wantErr:     false,
 			wantContain: "Post creado",
@@ -70,7 +81,7 @@ func TestCreatePost(t *testing.T) {
 		{
 			name: "repo falla",
 			req:  request.CreatePostRequest{Title: "Fail"},
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
+			setupMocks: func(repo *mocks.MockIPostRepository) {
 				repo.EXPECT().CreatePost(gomock.Any()).Return("", errors.New("db error"))
 			},
 			wantErr: true,
@@ -82,8 +93,8 @@ func TestCreatePost(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			svc, repo, redis, _, _ := newTestService(ctrl)
-			tt.setupMocks(repo, redis)
+			svc, repo, _, _, _ := newTestService(ctrl)
+			tt.setupMocks(repo)
 
 			result, err := svc.CreatePost(tt.req)
 			if tt.wantErr {
@@ -100,49 +111,42 @@ func TestCreatePost(t *testing.T) {
 
 func TestGetPosts(t *testing.T) {
 	post := models.Post{
-		Title:  "Cached",
+		Title:  "Public Post",
 		UserID: "u1",
+		Status: enums.PostStatusPublic,
 		ContentBlocks: []models.ContentBlock{
 			{Type: "text", Order: 1, Content: "body"},
 		},
 	}
-	cachedData, _ := json.Marshal([]models.Post{post})
 
 	tests := []struct {
 		name       string
-		setupMocks func(*mocks.MockIPostRepository, *mocks.MockIRedisClient)
+		userID     string
+		setupMocks func(*mocks.MockIPostRepository)
 		wantLen    int
 		wantErr    bool
 	}{
 		{
-			name: "cache hit",
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
-				redis.EXPECT().Get(gomock.Any(), "posts:all").Return(string(cachedData), nil)
+			name:   "retorna posts visibles para el usuario",
+			userID: "u1",
+			setupMocks: func(repo *mocks.MockIPostRepository) {
+				repo.EXPECT().GetPosts("u1").Return([]models.Post{post}, nil)
 			},
 			wantLen: 1,
 		},
 		{
-			name: "cache miss, DB ok",
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
-				redis.EXPECT().Get(gomock.Any(), "posts:all").Return("", errors.New("cache miss"))
-				repo.EXPECT().GetPosts().Return([]models.Post{post}, nil)
-				redis.EXPECT().Set(gomock.Any(), "posts:all", gomock.Any(), 24*time.Hour).Return(nil)
-			},
-			wantLen: 1,
-		},
-		{
-			name: "cache miss, DB falla",
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
-				redis.EXPECT().Get(gomock.Any(), "posts:all").Return("", errors.New("cache miss"))
-				repo.EXPECT().GetPosts().Return(nil, errors.New("db error"))
+			name:   "DB falla",
+			userID: "u1",
+			setupMocks: func(repo *mocks.MockIPostRepository) {
+				repo.EXPECT().GetPosts("u1").Return(nil, errors.New("db error"))
 			},
 			wantErr: true,
 		},
 		{
-			name: "cache miss, DB vacío",
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
-				redis.EXPECT().Get(gomock.Any(), "posts:all").Return("", errors.New("cache miss"))
-				repo.EXPECT().GetPosts().Return([]models.Post{}, nil)
+			name:   "sin posts",
+			userID: "u1",
+			setupMocks: func(repo *mocks.MockIPostRepository) {
+				repo.EXPECT().GetPosts("u1").Return([]models.Post{}, nil)
 			},
 			wantLen: 0,
 		},
@@ -153,10 +157,10 @@ func TestGetPosts(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			svc, repo, redis, _, _ := newTestService(ctrl)
-			tt.setupMocks(repo, redis)
+			svc, repo, _, _, _ := newTestService(ctrl)
+			tt.setupMocks(repo)
 
-			result, err := svc.GetPosts()
+			result, err := svc.GetPosts(tt.userID)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -173,6 +177,7 @@ func TestGetPostById(t *testing.T) {
 	post := models.Post{
 		Title:  "Detail",
 		UserID: "u1",
+		Status: enums.PostStatusPublic,
 		ContentBlocks: []models.ContentBlock{
 			{Type: "code", Order: 1, Content: "fmt.Println()", Language: "go"},
 		},
@@ -181,21 +186,24 @@ func TestGetPostById(t *testing.T) {
 	tests := []struct {
 		name       string
 		id         int
+		userID     string
 		setupMocks func(*mocks.MockIPostRepository)
 		wantErr    bool
 	}{
 		{
-			name: "encontrado",
-			id:   1,
+			name:   "encontrado",
+			id:     1,
+			userID: "u1",
 			setupMocks: func(repo *mocks.MockIPostRepository) {
-				repo.EXPECT().GetPostById(uint(1)).Return(post, nil)
+				repo.EXPECT().GetPostById(uint(1), "u1").Return(post, nil)
 			},
 		},
 		{
-			name: "no encontrado",
-			id:   99,
+			name:   "no encontrado",
+			id:     99,
+			userID: "u1",
 			setupMocks: func(repo *mocks.MockIPostRepository) {
-				repo.EXPECT().GetPostById(uint(99)).Return(models.Post{}, gorm.ErrRecordNotFound)
+				repo.EXPECT().GetPostById(uint(99), "u1").Return(models.Post{}, gorm.ErrRecordNotFound)
 			},
 			wantErr: true,
 		},
@@ -209,7 +217,7 @@ func TestGetPostById(t *testing.T) {
 			svc, repo, _, _, _ := newTestService(ctrl)
 			tt.setupMocks(repo)
 
-			result, err := svc.GetPostByID(tt.id)
+			result, err := svc.GetPostByID(tt.id, tt.userID)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -225,13 +233,14 @@ func TestGetPostById(t *testing.T) {
 
 func TestGetPostByFilter(t *testing.T) {
 	posts := []models.Post{
-		{Title: "Go tutorial", UserID: "u1"},
-		{Title: "Python guide", UserID: "u2"},
+		{Title: "Go tutorial", UserID: "u1", Status: enums.PostStatusPublic},
+		{Title: "Python guide", UserID: "u2", Status: enums.PostStatusPublic},
 	}
 
 	tests := []struct {
 		name       string
 		filter     string
+		userID     string
 		setupMocks func(*mocks.MockIPostRepository)
 		wantLen    int
 		wantErr    bool
@@ -239,24 +248,27 @@ func TestGetPostByFilter(t *testing.T) {
 		{
 			name:   "con resultados",
 			filter: "Go",
+			userID: "u1",
 			setupMocks: func(repo *mocks.MockIPostRepository) {
-				repo.EXPECT().GetPostsByFilter("Go").Return(posts[:1], nil)
+				repo.EXPECT().GetPostsByFilter("Go", "u1").Return(posts[:1], nil)
 			},
 			wantLen: 1,
 		},
 		{
 			name:   "sin resultados",
 			filter: "xxx",
+			userID: "u1",
 			setupMocks: func(repo *mocks.MockIPostRepository) {
-				repo.EXPECT().GetPostsByFilter("xxx").Return([]models.Post{}, nil)
+				repo.EXPECT().GetPostsByFilter("xxx", "u1").Return([]models.Post{}, nil)
 			},
 			wantLen: 0,
 		},
 		{
 			name:   "repo error",
 			filter: "bad",
+			userID: "u1",
 			setupMocks: func(repo *mocks.MockIPostRepository) {
-				repo.EXPECT().GetPostsByFilter("bad").Return(nil, errors.New("db error"))
+				repo.EXPECT().GetPostsByFilter("bad", "u1").Return(nil, errors.New("db error"))
 			},
 			wantErr: true,
 		},
@@ -270,7 +282,7 @@ func TestGetPostByFilter(t *testing.T) {
 			svc, repo, _, _, _ := newTestService(ctrl)
 			tt.setupMocks(repo)
 
-			result, err := svc.GetPostByFilter(tt.filter)
+			result, err := svc.GetPostByFilter(tt.filter, tt.userID)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -294,27 +306,26 @@ func TestUpdatePost(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		setupMocks func(*mocks.MockIPostRepository, *mocks.MockIRedisClient)
+		setupMocks func(*mocks.MockIPostRepository)
 		wantErr    bool
 	}{
 		{
 			name: "éxito",
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
+			setupMocks: func(repo *mocks.MockIPostRepository) {
 				repo.EXPECT().ExistsPost(1).Return(true)
 				repo.EXPECT().UpdatePost(uint(1), gomock.Any()).Return("Post actualizado", nil)
-				redis.EXPECT().Del(gomock.Any(), "posts:all").Return(nil)
 			},
 		},
 		{
 			name: "post no existe",
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
+			setupMocks: func(repo *mocks.MockIPostRepository) {
 				repo.EXPECT().ExistsPost(1).Return(false)
 			},
 			wantErr: true,
 		},
 		{
 			name: "repo update falla",
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
+			setupMocks: func(repo *mocks.MockIPostRepository) {
 				repo.EXPECT().ExistsPost(1).Return(true)
 				repo.EXPECT().UpdatePost(uint(1), gomock.Any()).Return("", errors.New("db error"))
 			},
@@ -327,8 +338,8 @@ func TestUpdatePost(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			svc, repo, redis, _, _ := newTestService(ctrl)
-			tt.setupMocks(repo, redis)
+			svc, repo, _, _, _ := newTestService(ctrl)
+			tt.setupMocks(repo)
 
 			_, err := svc.UpdatePost(req)
 			if tt.wantErr {
@@ -346,21 +357,20 @@ func TestDeletePostById(t *testing.T) {
 	tests := []struct {
 		name       string
 		id         string
-		setupMocks func(*mocks.MockIPostRepository, *mocks.MockIRedisClient)
+		setupMocks func(*mocks.MockIPostRepository)
 		wantErr    bool
 	}{
 		{
 			name: "éxito",
 			id:   "5",
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
+			setupMocks: func(repo *mocks.MockIPostRepository) {
 				repo.EXPECT().DeletePostById(5).Return(true)
-				redis.EXPECT().Del(gomock.Any(), "posts:all").Return(nil)
 			},
 		},
 		{
 			name: "no encontrado",
 			id:   "99",
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
+			setupMocks: func(repo *mocks.MockIPostRepository) {
 				repo.EXPECT().DeletePostById(99).Return(false)
 			},
 			wantErr: true,
@@ -368,7 +378,7 @@ func TestDeletePostById(t *testing.T) {
 		{
 			name: "ID inválido (se convierte en 0, no encontrado)",
 			id:   "abc",
-			setupMocks: func(repo *mocks.MockIPostRepository, redis *mocks.MockIRedisClient) {
+			setupMocks: func(repo *mocks.MockIPostRepository) {
 				repo.EXPECT().DeletePostById(0).Return(false)
 			},
 			wantErr: true,
@@ -380,8 +390,8 @@ func TestDeletePostById(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			svc, repo, redis, _, _ := newTestService(ctrl)
-			tt.setupMocks(repo, redis)
+			svc, repo, _, _, _ := newTestService(ctrl)
+			tt.setupMocks(repo)
 
 			_, err := svc.DeletePostByID(tt.id)
 			if tt.wantErr {

@@ -66,7 +66,7 @@ func (h *AuthHandler) GoogleLogin(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to sync user"})
 	}
 
-	token, err := middleware.GenerateToken(fmt.Sprintf("%d", user.ID), user.Email)
+	token, err := middleware.GenerateToken(fmt.Sprintf("%d", user.ID), user.Email, user.Name)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to generate token"})
 	}

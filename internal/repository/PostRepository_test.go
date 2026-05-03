@@ -24,7 +24,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func seedPost(t *testing.T, db *gorm.DB, title, userID string, blocks ...models.ContentBlock) models.Post {
 	t.Helper()
-	post := models.Post{Title: title, UserID: userID, IsVisible: true, ContentBlocks: blocks}
+	post := models.Post{Title: title, UserID: userID, Status: "public", ContentBlocks: blocks}
 	require.NoError(t, db.Create(&post).Error)
 	return post
 }
@@ -34,7 +34,7 @@ func seedPost(t *testing.T, db *gorm.DB, title, userID string, blocks ...models.
 func TestRepo_CreatePost(t *testing.T) {
 	t.Run("post simple", func(t *testing.T) {
 		repo := NewPostGormRepository(setupTestDB(t))
-		_, err := repo.CreatePost(models.Post{Title: "Hello", UserID: "u1"})
+		_, err := repo.CreatePost(models.Post{Title: "Hello", UserID: "u1", Status: "public"})
 		require.NoError(t, err)
 	})
 
@@ -43,6 +43,7 @@ func TestRepo_CreatePost(t *testing.T) {
 		post := models.Post{
 			Title:  "With blocks",
 			UserID: "u1",
+			Status: "public",
 			ContentBlocks: []models.ContentBlock{
 				{Type: "text", Order: 1, Content: "body"},
 				{Type: "code", Order: 2, Content: "main()", Language: "go"},
@@ -59,7 +60,7 @@ func TestRepo_CreatePost(t *testing.T) {
 func TestRepo_GetPosts(t *testing.T) {
 	t.Run("lista vacía", func(t *testing.T) {
 		repo := NewPostGormRepository(setupTestDB(t))
-		posts, err := repo.GetPosts()
+		posts, err := repo.GetPosts("u1")
 		require.NoError(t, err)
 		assert.Empty(t, posts)
 	})
@@ -70,10 +71,28 @@ func TestRepo_GetPosts(t *testing.T) {
 		seedPost(t, db, "Post 1", "u1", models.ContentBlock{Type: "text", Order: 1, Content: "a"})
 		seedPost(t, db, "Post 2", "u2")
 
-		posts, err := repo.GetPosts()
+		posts, err := repo.GetPosts("u1")
 		require.NoError(t, err)
 		assert.Len(t, posts, 2)
 		assert.Len(t, posts[0].ContentBlocks, 1)
+	})
+
+	t.Run("solo muestra posts privados del usuario", func(t *testing.T) {
+		db := setupTestDB(t)
+		repo := NewPostGormRepository(db)
+		seedPost(t, db, "Public Post", "u1")
+
+		privatePost := models.Post{Title: "Private Post", UserID: "u2", Status: "private"}
+		require.NoError(t, db.Create(&privatePost).Error)
+
+		posts, err := repo.GetPosts("u1")
+		require.NoError(t, err)
+		assert.Len(t, posts, 1)
+		assert.Equal(t, "Public Post", posts[0].Title)
+
+		posts2, err := repo.GetPosts("u2")
+		require.NoError(t, err)
+		assert.Len(t, posts2, 2)
 	})
 }
 
@@ -87,7 +106,7 @@ func TestRepo_GetPostById(t *testing.T) {
 			models.ContentBlock{Type: "code", Order: 1, Content: "fmt.Println()", Language: "go"},
 		)
 
-		post, err := repo.GetPostById(saved.ID)
+		post, err := repo.GetPostById(saved.ID, "u1")
 		require.NoError(t, err)
 		assert.Equal(t, "Detail", post.Title)
 		assert.Len(t, post.ContentBlocks, 1)
@@ -96,8 +115,29 @@ func TestRepo_GetPostById(t *testing.T) {
 
 	t.Run("no encontrado", func(t *testing.T) {
 		repo := NewPostGormRepository(setupTestDB(t))
-		_, err := repo.GetPostById(9999)
+		_, err := repo.GetPostById(9999, "u1")
 		assert.Error(t, err)
+	})
+
+	t.Run("post privado de otro usuario no accesible", func(t *testing.T) {
+		db := setupTestDB(t)
+		repo := NewPostGormRepository(db)
+		privatePost := models.Post{Title: "Private", UserID: "u2", Status: "private"}
+		require.NoError(t, db.Create(&privatePost).Error)
+
+		_, err := repo.GetPostById(privatePost.ID, "u1")
+		assert.Error(t, err)
+	})
+
+	t.Run("post privado accesible por su dueño", func(t *testing.T) {
+		db := setupTestDB(t)
+		repo := NewPostGormRepository(db)
+		privatePost := models.Post{Title: "Private", UserID: "u2", Status: "private"}
+		require.NoError(t, db.Create(&privatePost).Error)
+
+		post, err := repo.GetPostById(privatePost.ID, "u2")
+		require.NoError(t, err)
+		assert.Equal(t, "Private", post.Title)
 	})
 }
 
@@ -112,28 +152,45 @@ func TestRepo_GetPostsByFilter(t *testing.T) {
 	)
 
 	t.Run("por título", func(t *testing.T) {
-		posts, err := repo.GetPostsByFilter("Go")
+		posts, err := repo.GetPostsByFilter("Go", "u1")
 		require.NoError(t, err)
 		assert.Len(t, posts, 1)
 		assert.Equal(t, "Go tutorial", posts[0].Title)
 	})
 
 	t.Run("por userID", func(t *testing.T) {
-		posts, err := repo.GetPostsByFilter("user-py")
+		posts, err := repo.GetPostsByFilter("user-py", "u1")
 		require.NoError(t, err)
 		assert.Len(t, posts, 1)
 	})
 
 	t.Run("por contenido de content block", func(t *testing.T) {
-		posts, err := repo.GetPostsByFilter("learn python")
+		posts, err := repo.GetPostsByFilter("learn python", "u1")
 		require.NoError(t, err)
 		assert.Len(t, posts, 1)
 	})
 
 	t.Run("sin resultados", func(t *testing.T) {
-		posts, err := repo.GetPostsByFilter("xyz-nonexistent")
+		posts, err := repo.GetPostsByFilter("xyz-nonexistent", "u1")
 		require.NoError(t, err)
 		assert.Empty(t, posts)
+	})
+
+	t.Run("filtra posts privados de otros usuarios", func(t *testing.T) {
+		db := setupTestDB(t)
+		repo := NewPostGormRepository(db)
+		seedPost(t, db, "Public Post", "u1")
+		privatePost := models.Post{Title: "Private Post", UserID: "u2", Status: "private"}
+		require.NoError(t, db.Create(&privatePost).Error)
+
+		posts, err := repo.GetPostsByFilter("Post", "u1")
+		require.NoError(t, err)
+		assert.Len(t, posts, 1)
+		assert.Equal(t, "Public Post", posts[0].Title)
+
+		posts2, err := repo.GetPostsByFilter("Post", "u2")
+		require.NoError(t, err)
+		assert.Len(t, posts2, 2)
 	})
 }
 
@@ -149,7 +206,7 @@ func TestRepo_UpdatePost(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Post actualizado", msg)
 
-		updated, _ := repo.GetPostById(saved.ID)
+		updated, _ := repo.GetPostById(saved.ID, "u1")
 		assert.Equal(t, "Updated", updated.Title)
 	})
 
@@ -219,13 +276,13 @@ func TestRepo_ErrorPaths(t *testing.T) {
 
 	t.Run("GetPosts con DB cerrada", func(t *testing.T) {
 		repo := NewPostGormRepository(closedDB(t))
-		_, err := repo.GetPosts()
+		_, err := repo.GetPosts("u1")
 		assert.Error(t, err)
 	})
 
 	t.Run("GetPostsByFilter con DB cerrada", func(t *testing.T) {
 		repo := NewPostGormRepository(closedDB(t))
-		_, err := repo.GetPostsByFilter("anything")
+		_, err := repo.GetPostsByFilter("anything", "u1")
 		assert.Error(t, err)
 	})
 
