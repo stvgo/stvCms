@@ -6,7 +6,7 @@ import (
 )
 
 type IAuthService interface {
-	SyncUser(email, name, image, googleId string) (models.User, error)
+	SyncUser(email, name, image, googleID string) (models.User, error)
 	GetUserByEmail(email string) (models.User, error)
 }
 
@@ -18,15 +18,14 @@ func NewAuthService(repo repository.IUserRepository) IAuthService {
 	return &authService{repo: repo}
 }
 
-func (s *authService) SyncUser(email, name, image, googleId string) (models.User, error) {
+func (s *authService) SyncUser(email, name, image, googleID string) (models.User, error) {
 	user, err := s.repo.FindByEmail(email)
 	if err != nil {
-		// Crear nuevo usuario
 		newUser := models.User{
 			Email:    email,
 			Name:     name,
 			Image:    image,
-			GoogleID: googleId,
+			GoogleID: googleID,
 			Role:     "user",
 		}
 		if err := s.repo.Create(&newUser); err != nil {
@@ -35,11 +34,10 @@ func (s *authService) SyncUser(email, name, image, googleId string) (models.User
 		return newUser, nil
 	}
 
-	// Actualizar usuario existente
 	user.Name = name
 	user.Image = image
-	if googleId != "" {
-		user.GoogleID = googleId
+	if googleID != "" {
+		user.GoogleID = googleID
 	}
 	if err := s.repo.Update(&user); err != nil {
 		return models.User{}, err

@@ -35,7 +35,9 @@ import (
 type IPostService interface {
 	CreatePost(req request.CreatePostRequest) (string, error)
 	GetPosts(userID string) ([]response.PostResponse, error)
+	GetPublicPosts() ([]response.PostResponse, error)
 	GetPostByID(id int, userID string) (response.PostResponse, error)
+	GetPublicPostByID(id int) (response.PostResponse, error)
 	GetPostByFilter(filter string, userID string) ([]response.PostResponse, error)
 	UpdatePost(req request.UpdatePostRequest) (string, error)
 	DeletePostByID(id string) (string, error)
@@ -143,8 +145,72 @@ func (ps *postService) GetPosts(userID string) ([]response.PostResponse, error) 
 	return posts, nil
 }
 
+func (ps *postService) GetPublicPosts() ([]response.PostResponse, error) {
+	posts := []response.PostResponse{}
+	modelPosts, err := ps.repository.GetPublicPosts()
+	if err != nil {
+		return posts, err
+	}
+
+	for _, post := range modelPosts {
+		var contentBlocks []response.ContentBlockResponse
+		for _, block := range post.ContentBlocks {
+			contentBlocks = append(contentBlocks, response.ContentBlockResponse{
+				Id:       block.ID,
+				Type:     block.Type,
+				Order:    block.Order,
+				Content:  block.Content,
+				Language: block.Language,
+			})
+		}
+
+		data := response.PostResponse{
+			Id:            post.ID,
+			CreatedAt:     post.CreatedAt,
+			UpdatedAt:     post.UpdatedAt,
+			Title:         post.Title,
+			UserID:        post.UserID,
+			Status:        post.Status,
+			ContentBlocks: contentBlocks,
+		}
+		posts = append(posts, data)
+	}
+
+	return posts, nil
+}
+
 func (ps *postService) GetPostByID(id int, userID string) (response.PostResponse, error) {
 	post, err := ps.repository.GetPostById(uint(id), userID)
+	if err != nil {
+		return response.PostResponse{}, err
+	}
+
+	var contentBlocks []response.ContentBlockResponse
+	for _, block := range post.ContentBlocks {
+		contentBlocks = append(contentBlocks, response.ContentBlockResponse{
+			Id:       block.ID,
+			Type:     block.Type,
+			Order:    block.Order,
+			Content:  block.Content,
+			Language: block.Language,
+		})
+	}
+
+	postResponse := response.PostResponse{
+		Id:            post.Model.ID,
+		CreatedAt:     post.CreatedAt,
+		UpdatedAt:     post.UpdatedAt,
+		Title:         post.Title,
+		UserID:        post.UserID,
+		Status:        post.Status,
+		ContentBlocks: contentBlocks,
+	}
+
+	return postResponse, nil
+}
+
+func (ps *postService) GetPublicPostByID(id int) (response.PostResponse, error) {
+	post, err := ps.repository.GetPublicPostById(uint(id))
 	if err != nil {
 		return response.PostResponse{}, err
 	}

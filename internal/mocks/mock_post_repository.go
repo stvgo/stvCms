@@ -128,6 +128,36 @@ func (mr *MockIPostRepositoryMockRecorder) GetPostsByFilter(filter, userID any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostsByFilter", reflect.TypeOf((*MockIPostRepository)(nil).GetPostsByFilter), filter, userID)
 }
 
+// GetPublicPosts mocks base method.
+func (m *MockIPostRepository) GetPublicPosts() ([]models.Post, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPublicPosts")
+	ret0, _ := ret[0].([]models.Post)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPublicPosts indicates an expected call of GetPublicPosts.
+func (mr *MockIPostRepositoryMockRecorder) GetPublicPosts() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicPosts", reflect.TypeOf((*MockIPostRepository)(nil).GetPublicPosts))
+}
+
+// GetPublicPostById mocks base method.
+func (m *MockIPostRepository) GetPublicPostById(id uint) (models.Post, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPublicPostById", id)
+	ret0, _ := ret[0].(models.Post)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPublicPostById indicates an expected call of GetPublicPostById.
+func (mr *MockIPostRepositoryMockRecorder) GetPublicPostById(id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicPostById", reflect.TypeOf((*MockIPostRepository)(nil).GetPublicPostById), id)
+}
+
 // UpdatePost mocks base method.
 func (m *MockIPostRepository) UpdatePost(id uint, post models.Post) (string, error) {
 	m.ctrl.T.Helper()

@@ -10,8 +10,10 @@ import (
 type IPostRepository interface {
 	CreatePost(post models.Post) (string, error)
 	GetPosts(userID string) ([]models.Post, error)
+	GetPublicPosts() ([]models.Post, error)
 	UpdatePost(id uint, post models.Post) (string, error)
 	GetPostById(id uint, userID string) (models.Post, error)
+	GetPublicPostById(id uint) (models.Post, error)
 	GetPostsByFilter(filter string, userID string) ([]models.Post, error)
 	DeletePostById(id int) bool
 	ExistsPost(id int) bool
@@ -57,6 +59,17 @@ func (pr *postRepository) GetPosts(userID string) ([]models.Post, error) {
 	return posts, nil
 }
 
+func (pr *postRepository) GetPublicPosts() ([]models.Post, error) {
+	var posts []models.Post
+	err := pr.db.Preload("ContentBlocks").
+		Where("status = ?", "public").
+		Find(&posts).Error
+	if err != nil {
+		return posts, err
+	}
+	return posts, nil
+}
+
 func (pr *postRepository) UpdatePost(id uint, post models.Post) (string, error) {
 	result := pr.db.Model(&models.Post{}).Where("id = ?", id).Updates(post)
 	if result.Error != nil {
@@ -73,6 +86,17 @@ func (pr *postRepository) UpdatePost(id uint, post models.Post) (string, error) 
 func (pr *postRepository) GetPostById(id uint, userID string) (models.Post, error) {
 	var post models.Post
 	if err := pr.db.Where("id = ? AND (status = ? OR user_id = ?)", id, "public", userID).First(&post).Error; err != nil {
+		return post, err
+	}
+
+	contentBlocks, err := pr.GetContentBlocksById(id)
+	post.ContentBlocks = contentBlocks
+	return post, err
+}
+
+func (pr *postRepository) GetPublicPostById(id uint) (models.Post, error) {
+	var post models.Post
+	if err := pr.db.Where("id = ? AND status = ?", id, "public").First(&post).Error; err != nil {
 		return post, err
 	}
 

@@ -64,6 +64,15 @@ func (h *postHandler) GetPosts(c echo.Context) error {
 	return c.JSON(http.StatusOK, responsePosts)
 }
 
+func (h *postHandler) GetPublicPosts(c echo.Context) error {
+	responsePosts, err := h.service.GetPublicPosts()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, responsePosts)
+}
+
 func (h *postHandler) UpdatePost(c echo.Context) error {
 	var req request.UpdatePostRequest
 	if err := c.Bind(&req); err != nil {
@@ -102,6 +111,22 @@ func (h *postHandler) GetPostById(c echo.Context) error {
 	responsePost, err := h.service.GetPostByID(postId, userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, responsePost)
+}
+
+func (h *postHandler) GetPublicPostById(c echo.Context) error {
+	id := c.Param("id")
+
+	postId, err := strconv.Atoi(id)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid ID"})
+	}
+
+	responsePost, err := h.service.GetPublicPostByID(postId)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, echo.Map{"error": "Post not found"})
 	}
 
 	return c.JSON(http.StatusOK, responsePost)

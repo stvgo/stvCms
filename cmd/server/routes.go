@@ -23,6 +23,8 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 
 	e.GET("/post/image/:filename", postHandler.GetImage)
 	e.POST("/post/autoCompleteAI", postHandler.AutoCompleteAI)
+	e.GET("/post/getPublic", postHandler.GetPublicPosts)
+	e.GET("/post/getPublic/:id", postHandler.GetPublicPostById)
 
 	postGroup := e.Group("/post")
 	postGroup.Use(jwtMiddleware)
