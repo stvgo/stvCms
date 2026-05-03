@@ -40,16 +40,16 @@ func (m *MockIOpenRouterClient) EXPECT() *MockIOpenRouterClientMockRecorder {
 }
 
 // GenAI mocks base method.
-func (m *MockIOpenRouterClient) GenAI(text string) (string, error) {
+func (m *MockIOpenRouterClient) GenAI(systemPrompt, userPrompt string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenAI", text)
+	ret := m.ctrl.Call(m, "GenAI", systemPrompt, userPrompt)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GenAI indicates an expected call of GenAI.
-func (mr *MockIOpenRouterClientMockRecorder) GenAI(text any) *gomock.Call {
+func (mr *MockIOpenRouterClientMockRecorder) GenAI(systemPrompt, userPrompt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenAI", reflect.TypeOf((*MockIOpenRouterClient)(nil).GenAI), text)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenAI", reflect.TypeOf((*MockIOpenRouterClient)(nil).GenAI), systemPrompt, userPrompt)
 }

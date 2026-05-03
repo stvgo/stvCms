@@ -8,7 +8,7 @@ import (
 )
 
 type IOpenRouterClient interface {
-	GenAI(text string) (string, error)
+	GenAI(systemPrompt, userPrompt string) (string, error)
 }
 
 type openRouterClient struct {
@@ -23,14 +23,20 @@ func NewOpenRouter(apiKey string) IOpenRouterClient {
 	return &openRouterClient{client: client}
 }
 
-func (ro *openRouterClient) GenAI(text string) (string, error) {
+func (ro *openRouterClient) GenAI(systemPrompt, userPrompt string) (string, error) {
+	messages := []openrouter.ChatCompletionMessage{}
+
+	if systemPrompt != "" {
+		messages = append(messages, openrouter.SystemMessage(systemPrompt))
+	}
+
+	messages = append(messages, openrouter.UserMessage(userPrompt))
+
 	resp, err := ro.client.CreateChatCompletion(
 		context.Background(),
 		openrouter.ChatCompletionRequest{
-			Model: "inclusionai/ling-2.6-flash:free",
-			Messages: []openrouter.ChatCompletionMessage{
-				openrouter.UserMessage(text),
-			},
+			Model:    "nvidia/nemotron-3-super-120b-a12b:free",
+			Messages: messages,
 		},
 	)
 	if err != nil {

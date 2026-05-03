@@ -329,12 +329,15 @@ func (ps *postService) uploadImageR2(bucket, filename string, body io.Reader) (s
 
 func (ps *postService) AutoCompleteAI(reqAI request.AI) (string, error) {
 	if reqAI.TextAI != "" {
-		formatPrompt := "Realiza un formateo a este texto pero separalo por parrafos y que quede con formato html"
-		prePrompt := fmt.Sprintf("Complementa el siguiente texto para crear un post de blog atractivo y bien estructurado."+
-			" El texto debe ser claro, conciso y fácil de entender."+
-			" Asegúrate de incluir una introducción, un desarrollo y una conclusión. El tema del post es: %s. %s", reqAI.TextAI, formatPrompt)
+		systemPrompt := "Eres un escritor profesional de blogs. Generas contenido claro, conciso y atractivo." +
+			" Usas HTML semántico (<h2>, <h3>, <p>, <strong>, <em>, <ul>, <ol>, <blockquote>)." +
+			" Incluyes introducción, desarrollo y conclusión." +
+			" No uses markdown, solo HTML válido dentro de un <div>." +
+			" No incluyas explicaciones, solo el contenido HTML."
 
-		text, err := ps.openRouterClient.GenAI(prePrompt)
+		userPrompt := fmt.Sprintf("Escribe un post de blog bien estructurado sobre: %s", reqAI.TextAI)
+
+		text, err := ps.openRouterClient.GenAI(systemPrompt, userPrompt)
 		if err != nil {
 			slog.Error("error al generar el texto", "error", err)
 			return "", err
@@ -345,16 +348,20 @@ func (ps *postService) AutoCompleteAI(reqAI request.AI) (string, error) {
 	slog.Info("text_ai is empty")
 
 	if reqAI.CodeAI != "" {
-		formatCode := "Genera solo codigo en tipo main.go, no incluyas comentarios"
-		prompt := fmt.Sprintf("Genera el siguiente código con buenas prácticas, moderno y estructurado: %s. %s", reqAI.CodeAI, formatCode)
+		systemPrompt := "Eres un ingeniero de software experto. Generas código limpio, idiomático y bien estructurado." +
+			" Solo devuelves código ejecutable, sin explicaciones ni comentarios innecesarios." +
+			" Si el usuario especifica un lenguaje de programación, úsalo."
 
-		code, err := ps.openRouterClient.GenAI(prompt)
+		userPrompt := fmt.Sprintf("Genera código para: %s", reqAI.CodeAI)
+
+		code, err := ps.openRouterClient.GenAI(systemPrompt, userPrompt)
 		if err != nil {
-			slog.Error("error al generar el texto", "error", err)
+			slog.Error("error al generar el código", "error", err)
+			return "", err
 		}
 		return code, nil
 	}
 	slog.Info("code_ai is empty")
 
-	return fmt.Sprintf("No se puede autocompletar AI para Text=null, Code=null "), nil
+	return "", fmt.Errorf("text_ai y code_ai están vacíos")
 }

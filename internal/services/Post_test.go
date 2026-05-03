@@ -467,7 +467,7 @@ func TestAutoCompleteAI(t *testing.T) {
 			name: "texto AI ok",
 			req:  request.AI{TextAI: "Write about Go"},
 			setupMocks: func(ai *mocks.MockIOpenRouterClient) {
-				ai.EXPECT().GenAI(gomock.Any()).Return("Generated text", nil)
+				ai.EXPECT().GenAI(gomock.Any(), gomock.Any()).Return("Generated text", nil)
 			},
 			wantResult: "Generated text",
 		},
@@ -475,7 +475,7 @@ func TestAutoCompleteAI(t *testing.T) {
 			name: "código AI ok",
 			req:  request.AI{CodeAI: "HTTP server in Go"},
 			setupMocks: func(ai *mocks.MockIOpenRouterClient) {
-				ai.EXPECT().GenAI(gomock.Any()).Return("package main\n...", nil)
+				ai.EXPECT().GenAI(gomock.Any(), gomock.Any()).Return("package main\n...", nil)
 			},
 			wantResult: "package main",
 		},
@@ -483,7 +483,7 @@ func TestAutoCompleteAI(t *testing.T) {
 			name: "texto AI falla",
 			req:  request.AI{TextAI: "something"},
 			setupMocks: func(ai *mocks.MockIOpenRouterClient) {
-				ai.EXPECT().GenAI(gomock.Any()).Return("", errors.New("api error"))
+				ai.EXPECT().GenAI(gomock.Any(), gomock.Any()).Return("", errors.New("api error"))
 			},
 			wantErr: true,
 		},
@@ -491,7 +491,7 @@ func TestAutoCompleteAI(t *testing.T) {
 			name:       "sin input",
 			req:        request.AI{},
 			setupMocks: func(ai *mocks.MockIOpenRouterClient) {},
-			wantResult: "No se puede autocompletar AI",
+			wantErr:    true,
 		},
 	}
 
