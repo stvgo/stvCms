@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"stvCms/internal/middleware"
 	"stvCms/internal/services"
 
 	"github.com/labstack/echo/v4"
@@ -11,12 +12,14 @@ import (
 )
 
 type LoginAndRegisterHandler struct {
-	service services.ILoginAndRegisterService
+	service     services.ILoginAndRegisterService
+	authService services.IAuthService
 }
 
-func NewLoginAndRegisterHandler() *LoginAndRegisterHandler {
+func NewLoginAndRegisterHandler(authService services.IAuthService) *LoginAndRegisterHandler {
 	return &LoginAndRegisterHandler{
-		service: services.NewLoginAndRegisterService(),
+		service:     services.NewLoginAndRegisterService(),
+		authService: authService,
 	}
 }
 
@@ -54,6 +57,28 @@ func (h *LoginAndRegisterHandler) CallbackHandler(c echo.Context) error {
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
+
+	// Sync user with database
+	dbUser, err := h.authService.SyncUser(user.Email, user.Name, user.AvatarURL, user.UserID)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Error syncing user")
+	}
+
+	// Generate JWT and set auth cookie
+	token, err := middleware.GenerateToken(fmt.Sprintf("%d", dbUser.ID), dbUser.Email)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Error generating token")
+	}
+
+	cookie := &http.Cookie{
+		Name:     "auth_token",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   86400,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	}
+	c.SetCookie(cookie)
 
 	// Guardar sesión
 	session, _ := gothic.Store.Get(c.Request(), "user-session")

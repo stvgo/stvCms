@@ -21,6 +21,9 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 
 	jwtMiddleware := middleware.AuthMiddleware()
 
+	// Public image endpoint (must be accessible without auth for <img> tags)
+	e.GET("/post/image/:filename", postHandler.GetImage)
+
 	postGroup := e.Group("/post")
 	postGroup.Use(jwtMiddleware)
 	postGroup.POST("/create", postHandler.CreatePost)
@@ -28,7 +31,6 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	postGroup.GET("/getPost/:id", postHandler.GetPostById)
 	postGroup.PUT("/update", postHandler.UpdatePost)
 	postGroup.POST("/uploadImage", postHandler.UploadPostImage)
-	postGroup.GET("/image/:filename", postHandler.GetImage)
 	postGroup.DELETE("/delete/:id", postHandler.DeletePostById)
 	postGroup.POST("/getPost/:filter", postHandler.GetPostByFilter)
 	postGroup.POST("/autoCompleteAI", postHandler.AutoCompleteAI)
@@ -41,7 +43,7 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	authGroup.POST("/google", authHandler.GoogleLogin)
 	authGroup.GET("/me", authHandler.Me, jwtMiddleware)
 
-	loginHandler := handlers.NewLoginAndRegisterHandler()
+	loginHandler := handlers.NewLoginAndRegisterHandler(authService)
 	e.GET("/", loginHandler.Home)
 	authGroup.GET("/:provider", loginHandler.SignInWithProvider)
 	authGroup.GET("/:provider/callback", loginHandler.CallbackHandler)

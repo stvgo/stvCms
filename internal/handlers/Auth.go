@@ -71,6 +71,16 @@ func (h *AuthHandler) GoogleLogin(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to generate token"})
 	}
 
+	cookie := &http.Cookie{
+		Name:     "auth_token",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   86400,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	}
+	c.SetCookie(cookie)
+
 	return c.JSON(http.StatusOK, GoogleLoginResponse{
 		Token: token,
 		User: UserProfile{
