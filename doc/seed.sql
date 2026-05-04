@@ -52,3 +52,9 @@ INSERT INTO content_blocks (created_at, updated_at, deleted_at, type, "order", c
   (NOW(), NOW(), NULL, 'code',  2, 'e := echo.New()\ne.Use(middleware.Logger())\ne.Use(middleware.Recover())\n\ne.GET("/post/getAll", postHandler.GetPosts)\ne.POST("/post/create", postHandler.CreatePost)\n\ne.Start(":8080")', 'go', 5),
   (NOW(), NOW(), NULL, 'text',  3, 'Con pocas líneas tenemos un servidor con logging, recuperación de panics y rutas definidas.', '', 5),
   (NOW(), NOW(), NULL, 'url',   4, 'https://echo.labstack.com/', '', 5);
+
+-- =============================================================================
+-- PROJECTS
+-- =============================================================================
+INSERT INTO projects (created_at, updated_at, deleted_at, title, description, type, url, embed_url, image_url, git_hub_url, tech_stack, user_id) VALUES
+  (NOW(), NOW(), NULL, 'Flappy Kiro', 'Clone de Flappy Bird construido con HTML5 Canvas puro — sin dependencias, sin build step. Pixel-art con temática Kiro (paleta purple/pink). Proyecto para la hackathon de AWS usando Kiro Code. ¡Juega directo en el navegador!', 'game', 'https://flappy-kiro-production.up.railway.app', 'https://flappy-kiro-production.up.railway.app', '', 'https://github.com/stvgo/flappy-kiro', 'HTML5,Canvas,JavaScript', 'Stiven Valeriano');
