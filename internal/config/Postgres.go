@@ -33,5 +33,23 @@ func InitDB(cfg *Config) *gorm.DB {
 
 	db.Exec("UPDATE posts SET status = 'public' WHERE status = '' OR status IS NULL")
 
+	// Auto-seed: insert default projects if table is empty
+	var projectCount int64
+	db.Model(&models.Project{}).Count(&projectCount)
+	if projectCount == 0 {
+		log.Println("Seed: inserting default projects...")
+		db.Create(&models.Project{
+			Title:       "Flappy Kiro",
+			Description: "Clone de Flappy Bird construido con HTML5 Canvas puro — sin dependencias, sin build step. Pixel-art con temática Kiro (paleta purple/pink). Proyecto para la hackathon de AWS usando Kiro Code. ¡Juega directo en el navegador!",
+			Type:        "game",
+			URL:         "https://flappy-kiro-production.up.railway.app",
+			EmbedURL:    "https://flappy-kiro-production.up.railway.app",
+			GitHubURL:   "https://github.com/stvgo/flappy-kiro",
+			TechStack:   "HTML5,Canvas,JavaScript",
+			UserID:      "Stiven Valeriano",
+		})
+		log.Println("Seed: default projects inserted")
+	}
+
 	return db
 }
