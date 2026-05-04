@@ -49,7 +49,7 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	notifHandler := handlers.NewNotificationHandler(notifRepo)
 	adminNotifGroup := e.Group("/admin/notifications")
 	adminNotifGroup.Use(jwtMiddleware, middleware.AdminMiddleware())
-	adminNotifGroup.GET("/", notifHandler.GetAll)
+	adminNotifGroup.GET("", notifHandler.GetAll)
 	adminNotifGroup.GET("/unread-count", notifHandler.GetUnreadCount)
 	adminNotifGroup.PUT("/mark-read/:id", notifHandler.MarkRead)
 	adminNotifGroup.PUT("/mark-all-read", notifHandler.MarkAllRead)
