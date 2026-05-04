@@ -14,6 +14,7 @@ import (
 
 	"stvCms/internal/mocks"
 	"stvCms/internal/models"
+	"stvCms/internal/repository"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/services/enums"
 
@@ -21,7 +22,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func newTestService(ctrl *gomock.Controller) (*postService, *mocks.MockIPostRepository, *mocks.MockIRedisClient, *mocks.MockIR2Client, *mocks.MockIOpenRouterClient) {
@@ -641,4 +644,62 @@ func makeInvalidFile() (multipart.File, *multipart.FileHeader) {
 	data := []byte("not an image")
 	return &multipartFileReader{bytes.NewReader(data)},
 		&multipart.FileHeader{Filename: "bad.txt", Size: int64(len(data))}
+}
+
+// --- Integration tests with real DB for uncovered service methods ---
+
+func setupPostDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&models.Post{}, &models.ContentBlock{}))
+	return db
+}
+
+func TestGetPublicPosts(t *testing.T) {
+	t.Run("retorna solo posts publicos", func(t *testing.T) {
+		svc := NewPostService(context.Background(), nil, nil, setupPostDB(t), nil)
+		svc.repository = repository.NewPostGormRepository(setupPostDB(t))
+
+		// Create a public post manually
+		_, err := svc.repository.CreatePost(models.Post{Title: "Public Post", UserID: "u1", Status: "public"})
+		require.NoError(t, err)
+
+		posts, err := svc.GetPublicPosts()
+		require.NoError(t, err)
+		assert.Len(t, posts, 1)
+		assert.Equal(t, "Public Post", posts[0].Title)
+	})
+
+	t.Run("sin posts", func(t *testing.T) {
+		svc := NewPostService(context.Background(), nil, nil, setupPostDB(t), nil)
+		svc.repository = repository.NewPostGormRepository(setupPostDB(t))
+
+		posts, err := svc.GetPublicPosts()
+		require.NoError(t, err)
+		assert.Empty(t, posts)
+	})
+}
+
+func TestGetPublicPostByID(t *testing.T) {
+	t.Run("encontrado", func(t *testing.T) {
+		db := setupPostDB(t)
+		svc := NewPostService(context.Background(), nil, nil, db, nil)
+		svc.repository = repository.NewPostGormRepository(db)
+		svc.repository.CreatePost(models.Post{Title: "Public Post", UserID: "u1", Status: "public"})
+
+		post, err := svc.GetPublicPostByID(1)
+		require.NoError(t, err)
+		assert.Equal(t, "Public Post", post.Title)
+	})
+
+	t.Run("no encontrado", func(t *testing.T) {
+		svc := NewPostService(context.Background(), nil, nil, setupPostDB(t), nil)
+		svc.repository = repository.NewPostGormRepository(setupPostDB(t))
+
+		_, err := svc.GetPublicPostByID(9999)
+		assert.Error(t, err)
+	})
 }
