@@ -32,6 +32,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const AdminEmail = "jsvaleriano321@gmail.com"
+
 type IPostService interface {
 	CreatePost(req request.CreatePostRequest) (string, error)
 	GetPosts(userID string) ([]response.PostResponse, error)
@@ -39,11 +41,14 @@ type IPostService interface {
 	GetPostByID(id int, userID string) (response.PostResponse, error)
 	GetPublicPostByID(id int) (response.PostResponse, error)
 	GetPostByFilter(filter string, userID string) ([]response.PostResponse, error)
-	UpdatePost(req request.UpdatePostRequest) (string, error)
+	UpdatePost(req request.UpdatePostRequest, userEmail string) (string, error)
 	DeletePostByID(id string) (string, error)
 	SaveImage(image multipart.File, handler *multipart.FileHeader) (string, error)
 	GetImage(filename string) ([]byte, error)
 	AutoCompleteAI(reqAI request.AI) (string, error)
+	GetPendingPosts() ([]response.PostResponse, error)
+	ApprovePost(id uint) (string, error)
+	RejectPost(id uint) (string, error)
 }
 
 type postService struct {
@@ -87,6 +92,11 @@ func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error)
 		status = enums.PostStatusPublic
 	}
 
+	// Los posts públicos de usuarios no-admin quedan como pending hasta aprobación
+	if status == enums.PostStatusPublic && req.UserEmail != AdminEmail {
+		status = enums.PostStatusPending
+	}
+
 	post := models.Post{
 		Title:  req.Title,
 		UserID: req.UserID,
@@ -106,6 +116,10 @@ func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error)
 	modelPost, err := ps.repository.CreatePost(post)
 	if err != nil {
 		return "No se pudo crear el post", err
+	}
+
+	if status == enums.PostStatusPending {
+		return "Post creado — está pendiente de aprobación del administrador", nil
 	}
 
 	return modelPost, nil
@@ -274,7 +288,7 @@ func (ps *postService) GetPostByFilter(filter string, userID string) ([]response
 	return posts, nil
 }
 
-func (ps *postService) UpdatePost(req request.UpdatePostRequest) (string, error) {
+func (ps *postService) UpdatePost(req request.UpdatePostRequest, userEmail string) (string, error) {
 	ok := ps.repository.ExistsPost(int(req.Id))
 	if !ok {
 		return "", gorm.ErrRecordNotFound
@@ -282,9 +296,13 @@ func (ps *postService) UpdatePost(req request.UpdatePostRequest) (string, error)
 
 	status := req.Status
 	if status != "" {
-		validStatus := status == enums.PostStatusPublic || status == enums.PostStatusPrivate
+		validStatus := status == enums.PostStatusPublic || status == enums.PostStatusPrivate || status == enums.PostStatusPending
 		if !validStatus {
 			return "", fmt.Errorf("status invalido: %s", status)
+		}
+		// Solo el admin puede cambiar status a public (aprobar)
+		if status == enums.PostStatusPublic && userEmail != AdminEmail {
+			return "", fmt.Errorf("no tienes permiso para publicar posts — un administrador debe aprobarlo")
 		}
 	}
 
@@ -430,4 +448,62 @@ func (ps *postService) AutoCompleteAI(reqAI request.AI) (string, error) {
 	slog.Info("code_ai is empty")
 
 	return "", fmt.Errorf("text_ai y code_ai están vacíos")
+}
+
+func (ps *postService) GetPendingPosts() ([]response.PostResponse, error) {
+	modelPosts, err := ps.repository.GetPendingPosts()
+	if err != nil {
+		return nil, err
+	}
+
+	posts := make([]response.PostResponse, 0, len(modelPosts))
+	for _, post := range modelPosts {
+		contentBlocks := make([]response.ContentBlockResponse, 0, len(post.ContentBlocks))
+		for _, block := range post.ContentBlocks {
+			contentBlocks = append(contentBlocks, response.ContentBlockResponse{
+				Id:       block.ID,
+				Type:     block.Type,
+				Order:    block.Order,
+				Content:  block.Content,
+				Language: block.Language,
+			})
+		}
+		posts = append(posts, response.PostResponse{
+			Id:            post.ID,
+			CreatedAt:     post.CreatedAt,
+			UpdatedAt:     post.UpdatedAt,
+			Title:         post.Title,
+			UserID:        post.UserID,
+			Status:        post.Status,
+			ContentBlocks: contentBlocks,
+		})
+	}
+	return posts, nil
+}
+
+func (ps *postService) ApprovePost(id uint) (string, error) {
+	ok := ps.repository.ExistsPost(int(id))
+	if !ok {
+		return "", gorm.ErrRecordNotFound
+	}
+	postModel := models.Post{
+		Status: enums.PostStatusPublic,
+	}
+	result, err := ps.repository.UpdatePost(id, postModel)
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}
+
+func (ps *postService) RejectPost(id uint) (string, error) {
+	ok := ps.repository.ExistsPost(int(id))
+	if !ok {
+		return "", gorm.ErrRecordNotFound
+	}
+	okDel := ps.repository.DeletePostById(int(id))
+	if !okDel {
+		return "", fmt.Errorf("error al rechazar el post")
+	}
+	return "Post rechazado", nil
 }

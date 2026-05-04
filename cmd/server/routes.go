@@ -36,6 +36,13 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	postGroup.DELETE("/delete/:id", postHandler.DeletePostById)
 	postGroup.POST("/getPost/:filter", postHandler.GetPostByFilter)
 
+	// Admin-only routes for post approval
+	adminGroup := e.Group("/admin/post")
+	adminGroup.Use(jwtMiddleware, middleware.AdminMiddleware())
+	adminGroup.GET("/pending", postHandler.GetPendingPosts)
+	adminGroup.PUT("/approve/:id", postHandler.ApprovePost)
+	adminGroup.DELETE("/reject/:id", postHandler.RejectPost)
+
 	projectHandler := handlers.NewProjectHandler(db)
 
 	e.GET("/project/getPublic", projectHandler.GetPublicProjects)

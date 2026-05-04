@@ -3,6 +3,7 @@ package request
 type CreatePostRequest struct {
 	Title         string         `json:"title" binding:"required"`
 	UserID        string         `json:"user_id"`
+	UserEmail     string         `json:"user_email"`
 	ContentBlocks []ContentBlock `json:"content_blocks"`
 	Status        string         `json:"status"`
 }

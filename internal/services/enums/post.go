@@ -5,4 +5,5 @@ const (
 
 	PostStatusPublic  = "public"
 	PostStatusPrivate = "private"
+	PostStatusPending = "pending"
 )

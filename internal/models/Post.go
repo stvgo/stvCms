@@ -7,7 +7,7 @@ type Post struct {
 	Title         string
 	UserID        string
 	ContentBlocks []ContentBlock
-	Status        string `gorm:"type:varchar(20);default:'public'"`
+	Status        string `gorm:"type:varchar(20);default:'pending'"`
 }
 
 type ContentBlock struct {

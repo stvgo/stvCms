@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"stvCms/internal/clients"
+	"stvCms/internal/middleware"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/services"
 
@@ -44,6 +45,7 @@ func (h *postHandler) CreatePost(c echo.Context) error {
 	}
 
 	input.UserID = getUserName(c)
+	input.UserEmail = middleware.GetUserEmail(c)
 
 	result, err := h.service.CreatePost(input)
 	if err != nil {
@@ -79,7 +81,9 @@ func (h *postHandler) UpdatePost(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
 	}
 
-	result, err := h.service.UpdatePost(req)
+	userEmail := middleware.GetUserEmail(c)
+
+	result, err := h.service.UpdatePost(req, userEmail)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
@@ -192,4 +196,40 @@ func (h *postHandler) AutoCompleteAI(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+func (h *postHandler) GetPendingPosts(c echo.Context) error {
+	posts, err := h.service.GetPendingPosts()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, posts)
+}
+
+func (h *postHandler) ApprovePost(c echo.Context) error {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "ID inválido"})
+	}
+
+	result, err := h.service.ApprovePost(uint(id))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, echo.Map{"message": result})
+}
+
+func (h *postHandler) RejectPost(c echo.Context) error {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "ID inválido"})
+	}
+
+	result, err := h.service.RejectPost(uint(id))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, echo.Map{"message": result})
 }

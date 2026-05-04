@@ -344,7 +344,7 @@ func TestUpdatePost(t *testing.T) {
 			svc, repo, _, _, _ := newTestService(ctrl)
 			tt.setupMocks(repo)
 
-			_, err := svc.UpdatePost(req)
+			_, err := svc.UpdatePost(req, "test@local.dev")
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {

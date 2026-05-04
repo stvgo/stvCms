@@ -158,6 +158,21 @@ func (mr *MockIPostRepositoryMockRecorder) GetPublicPostById(id any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicPostById", reflect.TypeOf((*MockIPostRepository)(nil).GetPublicPostById), id)
 }
 
+// GetPendingPosts mocks base method.
+func (m *MockIPostRepository) GetPendingPosts() ([]models.Post, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPendingPosts")
+	ret0, _ := ret[0].([]models.Post)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPendingPosts indicates an expected call of GetPendingPosts.
+func (mr *MockIPostRepositoryMockRecorder) GetPendingPosts() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingPosts", reflect.TypeOf((*MockIPostRepository)(nil).GetPendingPosts))
+}
+
 // UpdatePost mocks base method.
 func (m *MockIPostRepository) UpdatePost(id uint, post models.Post) (string, error) {
 	m.ctrl.T.Helper()
