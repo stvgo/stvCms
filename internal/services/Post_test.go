@@ -660,7 +660,7 @@ func setupPostDB(t *testing.T) *gorm.DB {
 
 func TestGetPublicPosts(t *testing.T) {
 	t.Run("retorna solo posts publicos", func(t *testing.T) {
-		svc := NewPostService(context.Background(), nil, nil, setupPostDB(t), nil)
+		svc := NewPostService(context.Background(), nil, nil, setupPostDB(t), nil, nil)
 		svc.repository = repository.NewPostGormRepository(setupPostDB(t))
 
 		// Create a public post manually
@@ -674,7 +674,7 @@ func TestGetPublicPosts(t *testing.T) {
 	})
 
 	t.Run("sin posts", func(t *testing.T) {
-		svc := NewPostService(context.Background(), nil, nil, setupPostDB(t), nil)
+		svc := NewPostService(context.Background(), nil, nil, setupPostDB(t), nil, nil)
 		svc.repository = repository.NewPostGormRepository(setupPostDB(t))
 
 		posts, err := svc.GetPublicPosts()
@@ -686,7 +686,7 @@ func TestGetPublicPosts(t *testing.T) {
 func TestGetPublicPostByID(t *testing.T) {
 	t.Run("encontrado", func(t *testing.T) {
 		db := setupPostDB(t)
-		svc := NewPostService(context.Background(), nil, nil, db, nil)
+		svc := NewPostService(context.Background(), nil, nil, db, nil, nil)
 		svc.repository = repository.NewPostGormRepository(db)
 		svc.repository.CreatePost(models.Post{Title: "Public Post", UserID: "u1", Status: "public"})
 
@@ -696,7 +696,7 @@ func TestGetPublicPostByID(t *testing.T) {
 	})
 
 	t.Run("no encontrado", func(t *testing.T) {
-		svc := NewPostService(context.Background(), nil, nil, setupPostDB(t), nil)
+		svc := NewPostService(context.Background(), nil, nil, setupPostDB(t), nil, nil)
 		svc.repository = repository.NewPostGormRepository(setupPostDB(t))
 
 		_, err := svc.GetPublicPostByID(9999)

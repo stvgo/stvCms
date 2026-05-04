@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"fmt"
 	"stvCms/internal/models"
 
 	"gorm.io/gorm"
@@ -57,7 +58,7 @@ func (pr *postRepository) CreatePost(post models.Post) (string, error) {
 	if err != nil {
 		return "No se pudo crear el post", err
 	}
-	return "Post creado", nil
+	return fmt.Sprintf("%d", post.ID), nil
 }
 
 func (pr *postRepository) GetPosts(userID string) ([]models.Post, error) {

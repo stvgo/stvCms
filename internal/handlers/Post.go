@@ -8,6 +8,7 @@ import (
 
 	"stvCms/internal/clients"
 	"stvCms/internal/middleware"
+	"stvCms/internal/repository"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/services"
 
@@ -19,7 +20,7 @@ type postHandler struct {
 	service services.IPostService
 }
 
-func NewPostHandler(ctx context.Context, redisClient clients.IRedisClient, openRouterClient clients.IOpenRouterClient, db *gorm.DB, r2 clients.IR2Client) *postHandler {
+func NewPostHandler(ctx context.Context, redisClient clients.IRedisClient, openRouterClient clients.IOpenRouterClient, db *gorm.DB, r2 clients.IR2Client, notifRepo repository.INotificationRepository) *postHandler {
 	return &postHandler{
 		service: services.NewPostService(
 			ctx,
@@ -27,6 +28,7 @@ func NewPostHandler(ctx context.Context, redisClient clients.IRedisClient, openR
 			openRouterClient,
 			db,
 			r2,
+			notifRepo,
 		),
 	}
 }

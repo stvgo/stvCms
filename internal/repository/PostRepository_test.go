@@ -51,7 +51,7 @@ func TestRepo_CreatePost(t *testing.T) {
 		}
 		msg, err := repo.CreatePost(post)
 		require.NoError(t, err)
-		assert.Equal(t, "Post creado", msg)
+		assert.NotEmpty(t, msg, "CreatePost should return the post ID")
 	})
 }
 

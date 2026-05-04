@@ -14,10 +14,12 @@ import (
 )
 
 func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.Context) {
-	redisClient := clients.NewRedisWrapper(clients.NewRedisClient(ctx, cfg.RedisURL, cfg.RedisAddr, cfg.RedisPassword))
+	rawRedis := clients.NewRedisClient(ctx, cfg.RedisURL, cfg.RedisAddr, cfg.RedisPassword)
+	redisClient := clients.NewRedisWrapper(rawRedis)
 	openRouterClient := clients.NewOpenRouter(cfg.OpenRouterAPIKey)
 	cloudflareR2 := clients.NewR2Client(ctx, cfg.AccountID, cfg.AccessKeyID, cfg.SecretAccessKey)
-	postHandler := handlers.NewPostHandler(ctx, redisClient, openRouterClient, db, cloudflareR2)
+	notifRepo := repository.NewNotificationRepository(rawRedis)
+	postHandler := handlers.NewPostHandler(ctx, redisClient, openRouterClient, db, cloudflareR2, notifRepo)
 
 	jwtMiddleware := middleware.AuthMiddleware()
 
@@ -42,6 +44,16 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	adminGroup.GET("/pending", postHandler.GetPendingPosts)
 	adminGroup.PUT("/approve/:id", postHandler.ApprovePost)
 	adminGroup.DELETE("/reject/:id", postHandler.RejectPost)
+
+	// Admin notification routes
+	notifHandler := handlers.NewNotificationHandler(notifRepo)
+	adminNotifGroup := e.Group("/admin/notifications")
+	adminNotifGroup.Use(jwtMiddleware, middleware.AdminMiddleware())
+	adminNotifGroup.GET("/", notifHandler.GetAll)
+	adminNotifGroup.GET("/unread-count", notifHandler.GetUnreadCount)
+	adminNotifGroup.PUT("/mark-read/:id", notifHandler.MarkRead)
+	adminNotifGroup.PUT("/mark-all-read", notifHandler.MarkAllRead)
+	adminNotifGroup.DELETE("/:id", notifHandler.Delete)
 
 	projectHandler := handlers.NewProjectHandler(db)
 

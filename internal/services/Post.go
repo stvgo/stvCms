@@ -16,14 +16,14 @@ import (
 	"mime/multipart"
 	"path/filepath"
 	"strconv"
+	"time"
 
+	"stvCms/internal/clients"
 	"stvCms/internal/models"
 	"stvCms/internal/repository"
 	"stvCms/internal/rest/request"
 	"stvCms/internal/rest/response"
 	"stvCms/internal/services/enums"
-
-	"stvCms/internal/clients"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -53,6 +53,7 @@ type IPostService interface {
 
 type postService struct {
 	repository       repository.IPostRepository
+	notifRepo        repository.INotificationRepository
 	ctx              context.Context
 	redisClient      clients.IRedisClient
 	openRouterClient clients.IOpenRouterClient
@@ -76,9 +77,10 @@ func (ps *postService) GetImage(filename string) ([]byte, error) {
 	return data, nil
 }
 
-func NewPostService(ctx context.Context, redisClient clients.IRedisClient, openRouterClient clients.IOpenRouterClient, db *gorm.DB, r2 clients.IR2Client) *postService {
+func NewPostService(ctx context.Context, redisClient clients.IRedisClient, openRouterClient clients.IOpenRouterClient, db *gorm.DB, r2 clients.IR2Client, notifRepo repository.INotificationRepository) *postService {
 	return &postService{
 		repository:       repository.NewPostGormRepository(db),
+		notifRepo:        notifRepo,
 		ctx:              ctx,
 		redisClient:      redisClient,
 		openRouterClient: openRouterClient,
@@ -119,6 +121,27 @@ func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error)
 	}
 
 	if status == enums.PostStatusPending {
+		// Send notification to admin
+		var postID uint
+		fmt.Sscanf(modelPost, "%d", &postID)
+
+		notification := models.Notification{
+			ID:         uuid.New().String(),
+			Type:       "post_pending",
+			Title:      "Nuevo post pendiente de aprobación",
+			Message:    fmt.Sprintf("%s creó el post \"%s\" y está esperando aprobación", req.UserID, req.Title),
+			PostID:     postID,
+			AuthorID:   req.UserID,
+			AuthorName: req.UserID,
+			Read:       false,
+			CreatedAt:  time.Now(),
+		}
+		if ps.notifRepo != nil {
+			if notifErr := ps.notifRepo.Save(context.Background(), notification); notifErr != nil {
+				slog.Error("error al guardar notificación de post pendiente", "error", notifErr)
+			}
+		}
+
 		return "Post creado — está pendiente de aprobación del administrador", nil
 	}
 
