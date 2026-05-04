@@ -28,6 +28,7 @@ func InitDB(cfg *Config) *gorm.DB {
 		&models.Post{},
 		&models.ContentBlock{},
 		&models.User{},
+		&models.Project{},
 	)
 
 	db.Exec("UPDATE posts SET status = 'public' WHERE status = '' OR status IS NULL")

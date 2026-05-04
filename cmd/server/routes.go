@@ -36,6 +36,19 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	postGroup.DELETE("/delete/:id", postHandler.DeletePostById)
 	postGroup.POST("/getPost/:filter", postHandler.GetPostByFilter)
 
+	projectHandler := handlers.NewProjectHandler(db)
+
+	e.GET("/project/getPublic", projectHandler.GetPublicProjects)
+	e.GET("/project/getPublic/:id", projectHandler.GetProjectById)
+
+	projectGroup := e.Group("/project")
+	projectGroup.Use(jwtMiddleware)
+	projectGroup.POST("/create", projectHandler.CreateProject)
+	projectGroup.GET("/getAll", projectHandler.GetProjects)
+	projectGroup.GET("/getProject/:id", projectHandler.GetProjectById)
+	projectGroup.PUT("/update", projectHandler.UpdateProject)
+	projectGroup.DELETE("/delete/:id", projectHandler.DeleteProjectById)
+
 	userRepo := repository.NewUserRepository(db)
 	authService := services.NewAuthService(userRepo)
 	authHandler := handlers.NewAuthHandler(authService)

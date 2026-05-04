@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go clean:*)",
+      "Bash(go mod:*)",
+      "Bash(go list:*)",
+      "Bash(go get:*)",
+      "Bash(go build:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(awk '{print $NF}')",
+      "Bash(git *)",
+      "Bash(go env *)",
+      "Bash(xargs ls *)",
+      "Bash(go install *)",
+      "Bash(go test *)",
+      "Bash(go tool *)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
