@@ -47,6 +47,7 @@ type IPostService interface {
 	GetImage(filename string) ([]byte, error)
 	AutoCompleteAI(reqAI request.AI) (string, error)
 	GetPendingPosts() ([]response.PostResponse, error)
+	GetPendingPostByID(id uint) (response.PostResponse, error)
 	ApprovePost(id uint) (string, error)
 	RejectPost(id uint) (string, error)
 }
@@ -471,6 +472,34 @@ func (ps *postService) AutoCompleteAI(reqAI request.AI) (string, error) {
 	slog.Info("code_ai is empty")
 
 	return "", fmt.Errorf("text_ai y code_ai están vacíos")
+}
+
+func (ps *postService) GetPendingPostByID(id uint) (response.PostResponse, error) {
+	post, err := ps.repository.GetPendingPostByID(id)
+	if err != nil {
+		return response.PostResponse{}, err
+	}
+
+	contentBlocks := make([]response.ContentBlockResponse, 0, len(post.ContentBlocks))
+	for _, block := range post.ContentBlocks {
+		contentBlocks = append(contentBlocks, response.ContentBlockResponse{
+			Id:       block.ID,
+			Type:     block.Type,
+			Order:    block.Order,
+			Content:  block.Content,
+			Language: block.Language,
+		})
+	}
+
+	return response.PostResponse{
+		Id:            post.Model.ID,
+		CreatedAt:     post.CreatedAt,
+		UpdatedAt:     post.UpdatedAt,
+		Title:         post.Title,
+		UserID:        post.UserID,
+		Status:        post.Status,
+		ContentBlocks: contentBlocks,
+	}, nil
 }
 
 func (ps *postService) GetPendingPosts() ([]response.PostResponse, error) {

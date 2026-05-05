@@ -83,6 +83,36 @@ func (mr *MockIPostRepositoryMockRecorder) ExistsPost(id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsPost", reflect.TypeOf((*MockIPostRepository)(nil).ExistsPost), id)
 }
 
+// GetPendingPostByID mocks base method.
+func (m *MockIPostRepository) GetPendingPostByID(id uint) (models.Post, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPendingPostByID", id)
+	ret0, _ := ret[0].(models.Post)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPendingPostByID indicates an expected call of GetPendingPostByID.
+func (mr *MockIPostRepositoryMockRecorder) GetPendingPostByID(id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingPostByID", reflect.TypeOf((*MockIPostRepository)(nil).GetPendingPostByID), id)
+}
+
+// GetPendingPosts mocks base method.
+func (m *MockIPostRepository) GetPendingPosts() ([]models.Post, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPendingPosts")
+	ret0, _ := ret[0].([]models.Post)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPendingPosts indicates an expected call of GetPendingPosts.
+func (mr *MockIPostRepositoryMockRecorder) GetPendingPosts() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingPosts", reflect.TypeOf((*MockIPostRepository)(nil).GetPendingPosts))
+}
+
 // GetPostById mocks base method.
 func (m *MockIPostRepository) GetPostById(id uint, userID string) (models.Post, error) {
 	m.ctrl.T.Helper()
@@ -114,7 +144,7 @@ func (mr *MockIPostRepositoryMockRecorder) GetPosts(userID any) *gomock.Call {
 }
 
 // GetPostsByFilter mocks base method.
-func (m *MockIPostRepository) GetPostsByFilter(filter string, userID string) ([]models.Post, error) {
+func (m *MockIPostRepository) GetPostsByFilter(filter, userID string) ([]models.Post, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPostsByFilter", filter, userID)
 	ret0, _ := ret[0].([]models.Post)
@@ -126,21 +156,6 @@ func (m *MockIPostRepository) GetPostsByFilter(filter string, userID string) ([]
 func (mr *MockIPostRepositoryMockRecorder) GetPostsByFilter(filter, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostsByFilter", reflect.TypeOf((*MockIPostRepository)(nil).GetPostsByFilter), filter, userID)
-}
-
-// GetPublicPosts mocks base method.
-func (m *MockIPostRepository) GetPublicPosts() ([]models.Post, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPublicPosts")
-	ret0, _ := ret[0].([]models.Post)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetPublicPosts indicates an expected call of GetPublicPosts.
-func (mr *MockIPostRepositoryMockRecorder) GetPublicPosts() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicPosts", reflect.TypeOf((*MockIPostRepository)(nil).GetPublicPosts))
 }
 
 // GetPublicPostById mocks base method.
@@ -158,19 +173,19 @@ func (mr *MockIPostRepositoryMockRecorder) GetPublicPostById(id any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicPostById", reflect.TypeOf((*MockIPostRepository)(nil).GetPublicPostById), id)
 }
 
-// GetPendingPosts mocks base method.
-func (m *MockIPostRepository) GetPendingPosts() ([]models.Post, error) {
+// GetPublicPosts mocks base method.
+func (m *MockIPostRepository) GetPublicPosts() ([]models.Post, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPendingPosts")
+	ret := m.ctrl.Call(m, "GetPublicPosts")
 	ret0, _ := ret[0].([]models.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetPendingPosts indicates an expected call of GetPendingPosts.
-func (mr *MockIPostRepositoryMockRecorder) GetPendingPosts() *gomock.Call {
+// GetPublicPosts indicates an expected call of GetPublicPosts.
+func (mr *MockIPostRepositoryMockRecorder) GetPublicPosts() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingPosts", reflect.TypeOf((*MockIPostRepository)(nil).GetPendingPosts))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicPosts", reflect.TypeOf((*MockIPostRepository)(nil).GetPublicPosts))
 }
 
 // UpdatePost mocks base method.

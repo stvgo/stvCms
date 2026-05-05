@@ -217,6 +217,32 @@ func TestGetPendingPostsService(t *testing.T) {
 	})
 }
 
+// --- GetPendingPostByID ---
+
+func TestGetPendingPostByIDService(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewPostService(context.Background(), nil, nil, db, nil, nil)
+
+	// Create a pending post
+	db.Create(&models.Post{Title: "Pending Article", UserID: "u1", Status: enums.PostStatusPending})
+
+	t.Run("returns pending post by ID", func(t *testing.T) {
+		post, err := svc.GetPendingPostByID(1)
+		require.NoError(t, err)
+		assert.Equal(t, "Pending Article", post.Title)
+		assert.Equal(t, enums.PostStatusPending, post.Status)
+	})
+
+	t.Run("not found for non-pending post", func(t *testing.T) {
+		cleanDB := setupTestDB(t)
+		cleanSvc := NewPostService(context.Background(), nil, nil, cleanDB, nil, nil)
+		cleanDB.Create(&models.Post{Title: "Public", UserID: "u1", Status: enums.PostStatusPublic})
+
+		_, err := cleanSvc.GetPendingPostByID(1)
+		assert.Error(t, err)
+	})
+}
+
 // --- ApprovePost ---
 
 func TestApprovePost(t *testing.T) {

@@ -12,6 +12,7 @@ type IPostRepository interface {
 	CreatePost(post models.Post) (string, error)
 	GetPosts(userID string) ([]models.Post, error)
 	GetPublicPosts() ([]models.Post, error)
+	GetPendingPostByID(id uint) (models.Post, error)
 	GetPendingPosts() ([]models.Post, error)
 	UpdatePost(id uint, post models.Post) (string, error)
 	GetPostById(id uint, userID string) (models.Post, error)
@@ -40,6 +41,20 @@ func (pr *postRepository) GetPostsByFilter(filter string, userID string) ([]mode
 
 func NewPostGormRepository(db *gorm.DB) *postRepository {
 	return &postRepository{db: db}
+}
+
+func (pr *postRepository) GetPendingPostByID(id uint) (models.Post, error) {
+	var post models.Post
+	if err := pr.db.Where("id = ? AND status = ?", id, "pending").First(&post).Error; err != nil {
+		return post, err
+	}
+
+	contentBlocks, err := pr.GetContentBlocksById(id)
+	if err != nil {
+		return post, err
+	}
+	post.ContentBlocks = contentBlocks
+	return post, nil
 }
 
 func (pr *postRepository) GetPendingPosts() ([]models.Post, error) {

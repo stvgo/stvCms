@@ -199,7 +199,7 @@ func TestNotificationRepository(t *testing.T) {
 
 // --- PostRepository: GetPendingPosts ---
 
-func TestGetPendingPosts(t *testing.T) {
+func TestGetPendingPostsRepo(t *testing.T) {
 	db := setupDB(t)
 	repo := NewPostGormRepository(db)
 
@@ -224,6 +224,33 @@ func TestGetPendingPosts(t *testing.T) {
 		pending, err := cleanRepo.GetPendingPosts()
 		require.NoError(t, err)
 		assert.Empty(t, pending)
+	})
+}
+
+// --- PostRepository: GetPendingPostByID ---
+
+func TestGetPendingPostByID(t *testing.T) {
+	db := setupDB(t)
+	repo := NewPostGormRepository(db)
+
+	db.Create(&models.Post{Title: "Pending Article", UserID: "u1", Status: "pending"})
+	db.Create(&models.Post{Title: "Public Article", UserID: "u2", Status: "public"})
+
+	t.Run("finds pending post by ID", func(t *testing.T) {
+		post, err := repo.GetPendingPostByID(1)
+		require.NoError(t, err)
+		assert.Equal(t, "Pending Article", post.Title)
+		assert.Equal(t, "pending", post.Status)
+	})
+
+	t.Run("not found for public post", func(t *testing.T) {
+		_, err := repo.GetPendingPostByID(2)
+		assert.Error(t, err)
+	})
+
+	t.Run("not found for nonexistent ID", func(t *testing.T) {
+		_, err := repo.GetPendingPostByID(999)
+		assert.Error(t, err)
 	})
 }
 

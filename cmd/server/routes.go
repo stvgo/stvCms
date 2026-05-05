@@ -42,6 +42,7 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	adminGroup := e.Group("/admin/post")
 	adminGroup.Use(jwtMiddleware, middleware.AdminMiddleware())
 	adminGroup.GET("/pending", postHandler.GetPendingPosts)
+	adminGroup.GET("/pending/:id", postHandler.GetPendingPostByID)
 	adminGroup.PUT("/approve/:id", postHandler.ApprovePost)
 	adminGroup.DELETE("/reject/:id", postHandler.RejectPost)
 

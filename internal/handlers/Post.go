@@ -208,6 +208,20 @@ func (h *postHandler) GetPendingPosts(c echo.Context) error {
 	return c.JSON(http.StatusOK, posts)
 }
 
+func (h *postHandler) GetPendingPostByID(c echo.Context) error {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "ID inválido"})
+	}
+
+	post, err := h.service.GetPendingPostByID(uint(id))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, post)
+}
+
 func (h *postHandler) ApprovePost(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
