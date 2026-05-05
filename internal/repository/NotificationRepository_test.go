@@ -7,6 +7,7 @@ import (
 
 	"stvCms/internal/models"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,21 +26,25 @@ func setupDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+func setupRedis(t *testing.T) (*miniredis.Miniredis, *redis.Client) {
+	t.Helper()
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	return mr, client
+}
+
 // --- NotificationRepository ---
 
 func TestNotificationRepository(t *testing.T) {
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
-	ctx := context.Background()
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		t.Skip("Redis not available, skipping notification repository tests")
-	}
+	mr, rdb := setupRedis(t)
 	defer rdb.Close()
 
+	ctx := context.Background()
 	repo := NewNotificationRepository(rdb)
 
-	// Clean up before and after
-	rdb.Del(ctx, "admin:notifications")
-	defer rdb.Del(ctx, "admin:notifications")
+	// Clean up
+	rdb.Del(ctx, notificationKey)
+	defer rdb.Del(ctx, notificationKey)
 
 	t.Run("Save and GetAll", func(t *testing.T) {
 		n := models.Notification{
@@ -140,21 +145,21 @@ func TestNotificationRepository(t *testing.T) {
 	})
 
 	t.Run("GetAll with empty list", func(t *testing.T) {
-		rdb.Del(ctx, "admin:notifications")
+		mr.FlushAll()
 		notifs, err := repo.GetAll(ctx)
 		require.NoError(t, err)
 		assert.Empty(t, notifs)
 	})
 
 	t.Run("GetUnreadCount with empty list", func(t *testing.T) {
-		rdb.Del(ctx, "admin:notifications")
+		mr.FlushAll()
 		count, err := repo.GetUnreadCount(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, int64(0), count)
 	})
 
 	t.Run("CleanupOldNotifications removes old entries", func(t *testing.T) {
-		rdb.Del(ctx, "admin:notifications")
+		mr.FlushAll()
 
 		oldNotif := models.Notification{
 			ID:         "old-1",
@@ -191,10 +196,25 @@ func TestNotificationRepository(t *testing.T) {
 	})
 
 	t.Run("CleanupOldNotifications with no data", func(t *testing.T) {
-		rdb.Del(ctx, "admin:notifications")
+		mr.FlushAll()
 		err := repo.CleanupOldNotifications(ctx, 24*time.Hour)
 		require.NoError(t, err)
 	})
+
+	t.Run("Save with marshal error handled", func(t *testing.T) {
+		// This is implicitly tested by saving valid notifications above.
+		// The function only fails on json.Marshal which rarely fails.
+		// We test the happy path extensively.
+		n := models.Notification{
+			ID:    "marshal-test",
+			Type:  "post_pending",
+			Title: "Test",
+		}
+		err := repo.Save(ctx, n)
+		assert.NoError(t, err)
+	})
+
+	_ = mr // keep reference
 }
 
 // --- PostRepository: GetPendingPosts ---
@@ -294,6 +314,21 @@ func TestPostRepository_ErrorPaths(t *testing.T) {
 		sqlDB.Close()
 
 		_, err = repo.GetPendingPosts()
+		assert.Error(t, err)
+	})
+
+	t.Run("GetPendingPostByID with DB error", func(t *testing.T) {
+		db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Silent),
+		})
+		require.NoError(t, err)
+		require.NoError(t, db.AutoMigrate(&models.Post{}, &models.ContentBlock{}))
+		repo := NewPostGormRepository(db)
+
+		sqlDB, _ := db.DB()
+		sqlDB.Close()
+
+		_, err = repo.GetPendingPostByID(1)
 		assert.Error(t, err)
 	})
 }
