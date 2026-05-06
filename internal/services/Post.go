@@ -41,7 +41,7 @@ type IPostService interface {
 	GetPostByID(id int, userID string) (response.PostResponse, error)
 	GetPublicPostByID(id int) (response.PostResponse, error)
 	GetPostByFilter(filter string, userID string) ([]response.PostResponse, error)
-	UpdatePost(req request.UpdatePostRequest, userEmail string) (string, error)
+	UpdatePost(req request.UpdatePostRequest, userEmail string, userID string) (string, error)
 	DeletePostByID(id string) (string, error)
 	SaveImage(image multipart.File, handler *multipart.FileHeader) (string, error)
 	GetImage(filename string) ([]byte, error)
@@ -312,10 +312,28 @@ func (ps *postService) GetPostByFilter(filter string, userID string) ([]response
 	return posts, nil
 }
 
-func (ps *postService) UpdatePost(req request.UpdatePostRequest, userEmail string) (string, error) {
+func (ps *postService) UpdatePost(req request.UpdatePostRequest, userEmail string, userID string) (string, error) {
 	ok := ps.repository.ExistsPost(int(req.Id))
 	if !ok {
 		return "", gorm.ErrRecordNotFound
+	}
+
+	isAdmin := userEmail == AdminEmail
+
+	// Non-admin users can only edit their own posts
+	if !isAdmin {
+		existingPost, err := ps.repository.GetPostById(req.Id, userID)
+		if err != nil {
+			return "", fmt.Errorf("no tienes permiso para editar este post")
+		}
+		if existingPost.UserID != userID {
+			return "", fmt.Errorf("no tienes permiso para editar este post")
+		}
+	}
+
+	// Non-admin edits: force status to pending and notify admin
+	if !isAdmin {
+		req.Status = enums.PostStatusPending
 	}
 
 	status := req.Status
@@ -323,10 +341,6 @@ func (ps *postService) UpdatePost(req request.UpdatePostRequest, userEmail strin
 		validStatus := status == enums.PostStatusPublic || status == enums.PostStatusPrivate || status == enums.PostStatusPending
 		if !validStatus {
 			return "", fmt.Errorf("status invalido: %s", status)
-		}
-		// Solo el admin puede cambiar status a public (aprobar)
-		if status == enums.PostStatusPublic && userEmail != AdminEmail {
-			return "", fmt.Errorf("no tienes permiso para publicar posts — un administrador debe aprobarlo")
 		}
 	}
 
@@ -352,6 +366,26 @@ func (ps *postService) UpdatePost(req request.UpdatePostRequest, userEmail strin
 	result, err := ps.repository.UpdatePost(req.Id, postModel)
 	if err != nil {
 		return "", err
+	}
+
+	// Notify admin about the edited post pending approval
+	if !isAdmin {
+		notification := models.Notification{
+			ID:         uuid.New().String(),
+			Type:       "post_edited",
+			Title:      "Post editado pendiente de aprobación",
+			Message:    fmt.Sprintf("Un usuario editó el post #%d y está esperando aprobación", req.Id),
+			PostID:     req.Id,
+			AuthorID:   userEmail,
+			AuthorName: userEmail,
+			Read:       false,
+			CreatedAt:  time.Now(),
+		}
+		if ps.notifRepo != nil {
+			if notifErr := ps.notifRepo.Save(context.Background(), notification); notifErr != nil {
+				slog.Error("error al guardar notificación de post editado", "error", notifErr)
+			}
+		}
 	}
 
 	return result, nil

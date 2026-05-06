@@ -84,8 +84,9 @@ func (h *postHandler) UpdatePost(c echo.Context) error {
 	}
 
 	userEmail := middleware.GetUserEmail(c)
+	userID := getUserName(c)
 
-	result, err := h.service.UpdatePost(req, userEmail)
+	result, err := h.service.UpdatePost(req, userEmail, userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
