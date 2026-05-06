@@ -316,6 +316,7 @@ func TestUpdatePost(t *testing.T) {
 			name: "éxito",
 			setupMocks: func(repo *mocks.MockIPostRepository) {
 				repo.EXPECT().ExistsPost(1).Return(true)
+				repo.EXPECT().GetPostById(uint(1), "test@local.dev").Return(models.Post{UserID: "test@local.dev"}, nil)
 				repo.EXPECT().UpdatePost(uint(1), gomock.Any()).Return("Post actualizado", nil)
 			},
 		},
@@ -330,6 +331,7 @@ func TestUpdatePost(t *testing.T) {
 			name: "repo update falla",
 			setupMocks: func(repo *mocks.MockIPostRepository) {
 				repo.EXPECT().ExistsPost(1).Return(true)
+				repo.EXPECT().GetPostById(uint(1), "test@local.dev").Return(models.Post{UserID: "test@local.dev"}, nil)
 				repo.EXPECT().UpdatePost(uint(1), gomock.Any()).Return("", errors.New("db error"))
 			},
 			wantErr: true,
@@ -344,7 +346,7 @@ func TestUpdatePost(t *testing.T) {
 			svc, repo, _, _, _ := newTestService(ctrl)
 			tt.setupMocks(repo)
 
-			_, err := svc.UpdatePost(req, "test@local.dev")
+			_, err := svc.UpdatePost(req, "test@local.dev", "test@local.dev")
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {

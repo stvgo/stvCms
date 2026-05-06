@@ -139,50 +139,57 @@ func TestUpdatePost_NonAdminCannotPublish(t *testing.T) {
 	repo := mocks.NewMockIPostRepository(ctrl)
 	svc := &postService{repository: repo, ctx: context.Background()}
 
-	t.Run("non-admin cannot change status to public", func(t *testing.T) {
+	t.Run("non-admin edit forces pending status", func(t *testing.T) {
 		repo.EXPECT().ExistsPost(1).Return(true)
+		repo.EXPECT().GetPostById(uint(1), "regular").Return(models.Post{UserID: "regular"}, nil)
+		repo.EXPECT().UpdatePost(uint(1), gomock.Any()).DoAndReturn(func(id uint, p models.Post) (string, error) {
+			assert.Equal(t, enums.PostStatusPending, p.Status, "non-admin edit should force pending")
+			return "Post actualizado", nil
+		})
 
 		req := request.UpdatePostRequest{
 			Id:     1,
 			Status: enums.PostStatusPublic,
 		}
-		_, err := svc.UpdatePost(req, "regular@example.com")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "permiso")
+		_, err := svc.UpdatePost(req, "regular@example.com", "regular")
+		require.NoError(t, err)
 	})
 
 	t.Run("admin can change status to public", func(t *testing.T) {
 		repo.EXPECT().ExistsPost(1).Return(true)
-		repo.EXPECT().UpdatePost(uint(1), gomock.Any()).Return("Post actualizado", nil)
+		repo.EXPECT().UpdatePost(uint(1), gomock.Any()).DoAndReturn(func(id uint, p models.Post) (string, error) {
+			assert.Equal(t, enums.PostStatusPublic, p.Status, "admin should be able to set public")
+			return "Post actualizado", nil
+		})
 
 		req := request.UpdatePostRequest{
 			Id:     1,
 			Status: enums.PostStatusPublic,
 		}
-		_, err := svc.UpdatePost(req, "jsvaleriano321@gmail.com")
+		_, err := svc.UpdatePost(req, "jsvaleriano321@gmail.com", "Stiven")
 		require.NoError(t, err)
 	})
 
-	t.Run("non-admin can change status to private", func(t *testing.T) {
+	t.Run("non-admin cannot edit another user's post", func(t *testing.T) {
 		repo.EXPECT().ExistsPost(1).Return(true)
-		repo.EXPECT().UpdatePost(uint(1), gomock.Any()).Return("Post actualizado", nil)
+		repo.EXPECT().GetPostById(uint(1), "other").Return(models.Post{UserID: "owner"}, nil)
 
 		req := request.UpdatePostRequest{
-			Id:     1,
-			Status: enums.PostStatusPrivate,
+			Id: 1,
 		}
-		_, err := svc.UpdatePost(req, "regular@example.com")
-		require.NoError(t, err)
+		_, err := svc.UpdatePost(req, "regular@example.com", "other")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "permiso")
 	})
 
-	t.Run("invalid status rejected", func(t *testing.T) {
+	t.Run("invalid status rejected for admin", func(t *testing.T) {
 		repo.EXPECT().ExistsPost(1).Return(true)
 
 		req := request.UpdatePostRequest{
 			Id:     1,
 			Status: "invalid",
 		}
-		_, err := svc.UpdatePost(req, "regular@example.com")
+		_, err := svc.UpdatePost(req, "jsvaleriano321@gmail.com", "Stiven")
 		assert.Error(t, err)
 	})
 }

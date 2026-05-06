@@ -214,6 +214,7 @@ func TestRepo_UpdatePost(t *testing.T) {
 		repo := NewPostGormRepository(setupTestDB(t))
 		msg, err := repo.UpdatePost(9999, models.Post{Title: "Ghost"})
 		require.NoError(t, err)
+		// UpdatePost no retorna error si el ID no existe, solo informa que no hubo cambios
 		assert.Contains(t, msg, "no")
 	})
 }

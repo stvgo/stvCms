@@ -108,6 +108,10 @@ func (pr *postRepository) UpdatePost(id uint, post models.Post) (string, error) 
 		return "No se pudo actualizar el post", result.Error
 	}
 
+	if result.RowsAffected == 0 {
+		return "El post no fue encontrado o no habían datos para actualizar", nil
+	}
+
 	// Replace content blocks: delete old ones, insert new ones
 	if err := pr.db.Where("post_id = ?", id).Delete(&models.ContentBlock{}).Error; err != nil {
 		return "Error al eliminar content blocks anteriores", err
