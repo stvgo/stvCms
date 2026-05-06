@@ -1,2 +1,2 @@
-dejar el delete post solo para admin
+login con gh
 ajustar la miniatura de las imagenes

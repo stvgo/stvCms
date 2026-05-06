@@ -214,6 +214,39 @@ func TestNotificationRepository(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("MarkAllRead with multiple items", func(t *testing.T) {
+		mr.FlushAll()
+		n1 := models.Notification{ID: "mr-1", Type: "test", Title: "Notif 1", Message: "msg1", Read: false}
+		n2 := models.Notification{ID: "mr-2", Type: "test", Title: "Notif 2", Message: "msg2", Read: true}
+		n3 := models.Notification{ID: "mr-3", Type: "test", Title: "Notif 3", Message: "msg3", Read: false}
+		require.NoError(t, repo.Save(ctx, n1))
+		require.NoError(t, repo.Save(ctx, n2))
+		require.NoError(t, repo.Save(ctx, n3))
+
+		err := repo.MarkAllRead(ctx)
+		require.NoError(t, err)
+
+		notifs, _ := repo.GetAll(ctx)
+		for _, n := range notifs {
+			assert.True(t, n.Read, "notification %s should be read", n.ID)
+		}
+	})
+
+	t.Run("Delete specific notification", func(t *testing.T) {
+		mr.FlushAll()
+		n1 := models.Notification{ID: "del-1", Type: "test", Title: "Keep", Message: "keep", Read: false}
+		n2 := models.Notification{ID: "del-2", Type: "test", Title: "Delete", Message: "delete", Read: false}
+		require.NoError(t, repo.Save(ctx, n1))
+		require.NoError(t, repo.Save(ctx, n2))
+
+		err := repo.Delete(ctx, "del-2")
+		require.NoError(t, err)
+
+		notifs, _ := repo.GetAll(ctx)
+		assert.Len(t, notifs, 1)
+		assert.Equal(t, "del-1", notifs[0].ID)
+	})
+
 	_ = mr // keep reference
 }
 

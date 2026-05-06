@@ -224,6 +224,57 @@ func TestGetPendingPostsService(t *testing.T) {
 	})
 }
 
+// --- GetPublicPosts (service layer) ---
+
+func TestGetPublicPostsService(t *testing.T) {
+	db := setupTestDB(t)
+	svc := NewPostService(context.Background(), nil, nil, db, nil, nil)
+
+	db.Create(&models.Post{Title: "Public 1", UserID: "u1", Status: enums.PostStatusPublic})
+	db.Create(&models.Post{Title: "Public 2", UserID: "u2", Status: enums.PostStatusPublic})
+	db.Create(&models.Post{Title: "Private", UserID: "u1", Status: enums.PostStatusPrivate})
+
+	t.Run("returns only public posts", func(t *testing.T) {
+		publics, err := svc.GetPublicPosts()
+		require.NoError(t, err)
+		assert.Len(t, publics, 2)
+		for _, p := range publics {
+			assert.Equal(t, enums.PostStatusPublic, p.Status)
+		}
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		cleanDB := setupTestDB(t)
+		cleanSvc := NewPostService(context.Background(), nil, nil, cleanDB, nil, nil)
+		publics, err := cleanSvc.GetPublicPosts()
+		require.NoError(t, err)
+		assert.Empty(t, publics)
+	})
+}
+
+// --- GetPublicPostByID (service layer) ---
+
+func TestGetPublicPostByIDService(t *testing.T) {
+	db := setupTestDB(t)
+
+	t.Run("returns public post", func(t *testing.T) {
+		svc := NewPostService(context.Background(), nil, nil, db, nil, nil)
+		db.Create(&models.Post{Title: "Public Post", UserID: "u1", Status: enums.PostStatusPublic})
+
+		post, err := svc.GetPublicPostByID(1)
+		require.NoError(t, err)
+		assert.Equal(t, "Public Post", post.Title)
+	})
+
+	t.Run("non-public post not found", func(t *testing.T) {
+		svc := NewPostService(context.Background(), nil, nil, db, nil, nil)
+		db.Create(&models.Post{Title: "Private", UserID: "u1", Status: enums.PostStatusPrivate})
+
+		_, err := svc.GetPublicPostByID(2)
+		assert.Error(t, err)
+	})
+}
+
 // --- GetPendingPostByID ---
 
 func TestGetPendingPostByIDService(t *testing.T) {
@@ -380,4 +431,53 @@ func TestNotificationServiceWithMocks(t *testing.T) {
 		err := svc.Delete(context.Background(), "id-1")
 		require.NoError(t, err)
 	})
+}
+// --- GetPublicPosts / GetPendingPosts error paths (mock-based) ---
+
+func TestGetPublicPosts_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	repo := mocks.NewMockIPostRepository(ctrl)
+	repo.EXPECT().GetPublicPosts().Return(nil, errors.New("db error"))
+
+	svc := &postService{repository: repo, ctx: context.Background()}
+	_, err := svc.GetPublicPosts()
+	assert.Error(t, err)
+}
+
+func TestGetPendingPosts_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	repo := mocks.NewMockIPostRepository(ctrl)
+	repo.EXPECT().GetPendingPosts().Return(nil, errors.New("db error"))
+
+	svc := &postService{repository: repo, ctx: context.Background()}
+	_, err := svc.GetPendingPosts()
+	assert.Error(t, err)
+}
+
+func TestGetPublicPostByID_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	repo := mocks.NewMockIPostRepository(ctrl)
+	repo.EXPECT().GetPublicPostById(uint(1)).Return(models.Post{}, errors.New("not found"))
+
+	svc := &postService{repository: repo, ctx: context.Background()}
+	_, err := svc.GetPublicPostByID(1)
+	assert.Error(t, err)
+}
+
+func TestGetPendingPostByID_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	repo := mocks.NewMockIPostRepository(ctrl)
+	repo.EXPECT().GetPendingPostByID(uint(1)).Return(models.Post{}, errors.New("not found"))
+
+	svc := &postService{repository: repo, ctx: context.Background()}
+	_, err := svc.GetPendingPostByID(1)
+	assert.Error(t, err)
 }

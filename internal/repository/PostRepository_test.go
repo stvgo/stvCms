@@ -210,12 +210,73 @@ func TestRepo_UpdatePost(t *testing.T) {
 		assert.Equal(t, "Updated", updated.Title)
 	})
 
+	t.Run("reemplaza content blocks", func(t *testing.T) {
+		db := setupTestDB(t)
+		repo := NewPostGormRepository(db)
+
+		saved := seedPost(t, db, "Original", "u1")
+		// Add initial content blocks
+		initialBlocks := []models.ContentBlock{
+			{Type: "text", Order: 0, Content: "old text", PostID: saved.ID},
+			{Type: "code", Order: 1, Content: "old code", Language: "go", PostID: saved.ID},
+		}
+		require.NoError(t, db.Create(&initialBlocks).Error)
+
+		// Update with new content blocks
+		newBlocks := []models.ContentBlock{
+			{Type: "text", Order: 0, Content: "new text"},
+		}
+		msg, err := repo.UpdatePost(saved.ID, models.Post{
+			Title:         "Updated",
+			ContentBlocks: newBlocks,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "Post actualizado", msg)
+
+		// Verify old blocks were replaced
+		var count int64
+		db.Model(&models.ContentBlock{}).Where("post_id = ?", saved.ID).Count(&count)
+		assert.Equal(t, int64(1), count, "old content blocks should be replaced with new ones")
+
+		var block models.ContentBlock
+		require.NoError(t, db.Where("post_id = ?", saved.ID).First(&block).Error)
+		assert.Equal(t, "new text", block.Content)
+	})
+
 	t.Run("ID no existe", func(t *testing.T) {
 		repo := NewPostGormRepository(setupTestDB(t))
 		msg, err := repo.UpdatePost(9999, models.Post{Title: "Ghost"})
 		require.NoError(t, err)
 		// UpdatePost no retorna error si el ID no existe, solo informa que no hubo cambios
 		assert.Contains(t, msg, "no")
+	})
+
+	t.Run("actualiza status", func(t *testing.T) {
+		db := setupTestDB(t)
+		repo := NewPostGormRepository(db)
+		saved := seedPost(t, db, "Original", "u1")
+
+		msg, err := repo.UpdatePost(saved.ID, models.Post{Title: "Updated", Status: "pending"})
+		require.NoError(t, err)
+		assert.Equal(t, "Post actualizado", msg)
+
+		updated, _ := repo.GetPostById(saved.ID, "u1")
+		assert.Equal(t, "pending", updated.Status)
+	})
+
+	t.Run("actualiza con content blocks vacios", func(t *testing.T) {
+		db := setupTestDB(t)
+		repo := NewPostGormRepository(db)
+		saved := seedPost(t, db, "Original", "u1")
+
+		// Update with no content blocks
+		msg, err := repo.UpdatePost(saved.ID, models.Post{Title: "Updated", ContentBlocks: []models.ContentBlock{}})
+		require.NoError(t, err)
+		assert.Equal(t, "Post actualizado", msg)
+
+		var count int64
+		db.Model(&models.ContentBlock{}).Where("post_id = ?", saved.ID).Count(&count)
+		assert.Equal(t, int64(0), count)
 	})
 }
 
@@ -365,6 +426,18 @@ func TestRepo_ErrorPaths(t *testing.T) {
 	t.Run("GetPublicPostById con DB cerrada", func(t *testing.T) {
 		repo := NewPostGormRepository(closedDB(t))
 		_, err := repo.GetPublicPostById(1)
+		assert.Error(t, err)
+	})
+
+	t.Run("GetPendingPostByID con DB cerrada", func(t *testing.T) {
+		repo := NewPostGormRepository(closedDB(t))
+		_, err := repo.GetPendingPostByID(1)
+		assert.Error(t, err)
+	})
+
+	t.Run("GetPendingPosts con DB cerrada", func(t *testing.T) {
+		repo := NewPostGormRepository(closedDB(t))
+		_, err := repo.GetPendingPosts()
 		assert.Error(t, err)
 	})
 }
