@@ -3,3 +3,6 @@
 
 public/uploads/server
 server
+
+# Coverage files
+*.out
