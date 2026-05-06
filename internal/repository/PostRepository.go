@@ -99,13 +99,28 @@ func (pr *postRepository) GetPublicPosts() ([]models.Post, error) {
 }
 
 func (pr *postRepository) UpdatePost(id uint, post models.Post) (string, error) {
-	result := pr.db.Model(&models.Post{}).Where("id = ?", id).Updates(post)
+	// Update post fields
+	result := pr.db.Model(&models.Post{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"title":  post.Title,
+		"status": post.Status,
+	})
 	if result.Error != nil {
 		return "No se pudo actualizar el post", result.Error
 	}
 
-	if result.RowsAffected == 0 {
-		return "El post no fue encontrado o no habían datos para actualizar", nil
+	// Replace content blocks: delete old ones, insert new ones
+	if err := pr.db.Where("post_id = ?", id).Delete(&models.ContentBlock{}).Error; err != nil {
+		return "Error al eliminar content blocks anteriores", err
+	}
+
+	for i := range post.ContentBlocks {
+		post.ContentBlocks[i].PostID = id
+		post.ContentBlocks[i].ID = 0 // force new insert
+	}
+	if len(post.ContentBlocks) > 0 {
+		if err := pr.db.Create(&post.ContentBlocks).Error; err != nil {
+			return "Error al guardar content blocks", err
+		}
 	}
 
 	return "Post actualizado", nil
