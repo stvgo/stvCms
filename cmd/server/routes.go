@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+
 	"stvCms/internal/clients"
 	"stvCms/internal/config"
 	"stvCms/internal/handlers"
@@ -22,7 +23,7 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	postHandler := handlers.NewPostHandler(ctx, redisClient, openRouterClient, db, cloudflareR2, notifRepo)
 
 	jwtMiddleware := middleware.AuthMiddleware()
-
+	// public endpoints
 	e.GET("/post/image/:filename", postHandler.GetImage)
 	e.POST("/post/autoCompleteAI", postHandler.AutoCompleteAI)
 	e.GET("/post/getPublic", postHandler.GetPublicPosts)
