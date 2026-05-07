@@ -8,5 +8,6 @@ type User struct {
 	Name     string
 	Image    string
 	GoogleID string `gorm:"uniqueIndex"`
+	GitHubID string `gorm:"index"`
 	Role     string `gorm:"default:'user'"`
 }

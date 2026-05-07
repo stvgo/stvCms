@@ -78,6 +78,11 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	authGroup.POST("/google", authHandler.GoogleLogin)
 	authGroup.GET("/me", authHandler.Me, jwtMiddleware)
 
+	// GitHub OAuth
+	gitHubAuthHandler := handlers.NewGitHubAuthHandler(authService)
+	authGroup.GET("/github", gitHubAuthHandler.GitHubRedirect)
+	authGroup.GET("/github/callback", gitHubAuthHandler.GitHubCallback)
+
 	loginHandler := handlers.NewLoginAndRegisterHandler(authService)
 	e.GET("/", loginHandler.Home)
 	authGroup.GET("/:provider", loginHandler.SignInWithProvider)

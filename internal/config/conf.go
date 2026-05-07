@@ -10,10 +10,14 @@ type Config struct {
 	Port          string
 	SessionSecret string
 	AuthSecret    string
-	// OAuth
+	// OAuth - Google
 	ClientID          string
 	ClientSecret      string
 	ClientCallbackURL string
+	// OAuth - GitHub
+	GitHubClientID          string
+	GitHubClientSecret      string
+	GitHubClientCallbackURL string
 	// Database
 	DatabaseURL string
 	DBUser      string
@@ -58,6 +62,9 @@ func Load() *Config {
 		ClientID:          os.Getenv("CLIENT_ID"),
 		ClientSecret:      os.Getenv("CLIENT_SECRET"),
 		ClientCallbackURL: os.Getenv("CLIENT_CALLBACK_URL"),
+		GitHubClientID:          os.Getenv("GITHUB_CLIENT_ID"),
+		GitHubClientSecret:      os.Getenv("GITHUB_CLIENT_SECRET"),
+		GitHubClientCallbackURL: os.Getenv("GITHUB_CALLBACK_URL"),
 		DatabaseURL:       os.Getenv("DATABASE_URL"),
 		DBUser:            os.Getenv("DB_USER"),
 		DBPassword:        os.Getenv("DB_PASSWORD"),
