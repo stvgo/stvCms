@@ -95,7 +95,6 @@ func (ps *postService) CreatePost(req request.CreatePostRequest) (string, error)
 		status = enums.PostStatusPublic
 	}
 
-	// Los posts públicos de usuarios no-admin quedan como pending hasta aprobación
 	if status == enums.PostStatusPublic && req.UserEmail != AdminEmail {
 		status = enums.PostStatusPending
 	}
