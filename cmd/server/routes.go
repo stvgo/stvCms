@@ -23,7 +23,7 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	postHandler := handlers.NewPostHandler(ctx, redisClient, openRouterClient, db, cloudflareR2, notifRepo)
 
 	jwtMiddleware := middleware.AuthMiddleware()
-	// public endpoints
+
 	e.GET("/post/image/:filename", postHandler.GetImage)
 	e.POST("/post/autoCompleteAI", postHandler.AutoCompleteAI)
 	e.GET("/post/getPublic", postHandler.GetPublicPosts)
@@ -47,7 +47,6 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	adminGroup.PUT("/approve/:id", postHandler.ApprovePost)
 	adminGroup.DELETE("/reject/:id", postHandler.RejectPost)
 
-	// Admin notification routes
 	notifHandler := handlers.NewNotificationHandler(notifRepo)
 	adminNotifGroup := e.Group("/admin/notifications")
 	adminNotifGroup.Use(jwtMiddleware, middleware.AdminMiddleware())
@@ -78,7 +77,6 @@ func registerRoutes(e *echo.Echo, cfg *config.Config, db *gorm.DB, ctx context.C
 	authGroup.POST("/google", authHandler.GoogleLogin)
 	authGroup.GET("/me", authHandler.Me, jwtMiddleware)
 
-	// GitHub OAuth
 	gitHubAuthHandler := handlers.NewGitHubAuthHandler(authService)
 	authGroup.GET("/github", gitHubAuthHandler.GitHubRedirect)
 	authGroup.GET("/github/callback", gitHubAuthHandler.GitHubCallback)
